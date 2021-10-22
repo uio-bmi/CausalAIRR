@@ -17,6 +17,7 @@ def load_olga_repertoire(filepath: Path, result_path: Path):
     PathBuilder.build(result_path / 'repertoires')
 
     repertoire = ImportHelper.load_repertoire_as_object(OLGAImport, metadata_row=Series({'filename': filepath.name}), params=params)
+    repertoire.metadata['filename'] = repertoire.data_filename.name
 
     return repertoire
 
