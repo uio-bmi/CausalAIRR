@@ -22,7 +22,6 @@ def load_olga_repertoire(filepath: Path, result_path: Path):
 
 
 def load_iml_repertoire(filepath: Path, identifier: str):
-
     repertoire = Repertoire(data_filename=filepath, metadata_filename=filepath.parent / f'{filepath.stem}_metadata.yaml',
                             identifier=identifier)
 
