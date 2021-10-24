@@ -2,3 +2,4 @@ olga>=1.2.4
 jupyter>=1.0
 immuneML>=2.0
 pandas>=1.3.3
+git+https://github.com/uio-bmi/dagsim.git@main
