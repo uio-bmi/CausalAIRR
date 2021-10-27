@@ -65,7 +65,7 @@ def make_repertoire_with_signal(repertoire: Repertoire, signal: Signal, result_p
     return new_repertoire
 
 
-def make_AIRR_dataset(repertoires: List[Repertoire], path: Path, dataset_name: str, signal_name: str):
+def make_AIRR_dataset(repertoires: List[Repertoire], path: Path, dataset_name: str, signal_names: List[str]):
 
     assert len(repertoires) > 0, "No repertoires in the list, cannot make dataset."
 
@@ -78,8 +78,8 @@ def make_AIRR_dataset(repertoires: List[Repertoire], path: Path, dataset_name: s
                   **{key: [repertoire.metadata[key] for repertoire in repertoires] for key in metadata_keys}})\
         .to_csv(path_or_buf=metadata_file, index=False)
 
-    dataset = RepertoireDataset(labels={signal_name: [True, False]}, repertoires=repertoires, metadata_file=metadata_file,
-                                name=dataset_name)
+    dataset = RepertoireDataset(labels={signal_name: [True, False] for signal_name in signal_names}, repertoires=repertoires,
+                                metadata_file=metadata_file, name=dataset_name)
 
     AIRRExporter.export(dataset, path / "AIRR", RegionType.IMGT_JUNCTION)
 
