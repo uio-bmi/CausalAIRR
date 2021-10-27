@@ -31,8 +31,16 @@ def make_immune_signal(signal_name: str = "immune_state") -> Signal:
     return signal
 
 
-def make_exp_protocol_signal(signal_name: str = "experimental_protocol"):
-    motif1 = Motif(identifier="motif1", seed="QHF",
+def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimental_protocol_1"):
+
+    if protocol_id == 1:
+        seed = "QHF"
+    elif protocol_id == 2:
+        seed = "EAF"
+    else:
+        raise ValueError("Protocol id can only be 1 or 2 for now.")
+
+    motif1 = Motif(identifier="motif1", seed=seed,
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
 
     signal = Signal(identifier=signal_name, motifs=[motif1],
