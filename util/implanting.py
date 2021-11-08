@@ -25,7 +25,7 @@ def make_immune_signal(signal_name: str = "immune_state") -> Signal:
     return signal
 
 
-def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimental_protocol_1"):
+def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimental_protocol"):
 
     if protocol_id == 1:
         seed = "QHF"
