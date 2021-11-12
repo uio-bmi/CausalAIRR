@@ -43,14 +43,14 @@ def load_iml_repertoire(filepath: Path, identifier: str = None):
     return repertoire
 
 
-def make_olga_repertoire(confounder: bool, confounder_name: str, sequence_count: int, path: Path, seed: int) -> Repertoire:
+def make_olga_repertoire(confounder: str, confounder_name: str, sequence_count: int, path: Path, seed) -> Repertoire:
     olga_path = PathBuilder.build(path / 'olga')
 
-    if confounder:
-        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {olga_path}/{seed}.tsv --seed={seed} >> {olga_path}/log.txt")
+    if confounder == "C1":
+        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {olga_path}/{seed}.tsv >> {olga_path}/log.txt")
     else:
         os.system(
-            f"olga-generate_sequences -n {sequence_count} -o {olga_path}/{seed}.tsv --seed={seed} --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {olga_path}/log.txt")
+            f"olga-generate_sequences -n {sequence_count} -o {olga_path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {olga_path}/log.txt")
 
     repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{seed}.tsv"), result_path=path / "immuneML_naive",
                                       additional_metadata={confounder_name: confounder})
