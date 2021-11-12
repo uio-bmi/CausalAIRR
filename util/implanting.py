@@ -11,10 +11,10 @@ from immuneML.util.PathBuilder import PathBuilder
 
 
 def make_immune_signal(signal_name: str = "immune_state") -> Signal:
-    motif1 = Motif(identifier="motif1", seed="ADR",
+    motif1 = Motif(identifier="motif1", seed="EQY",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
 
-    motif2 = Motif(identifier="motif2", seed="ATS",
+    motif2 = Motif(identifier="motif2", seed="QPQ",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
 
     signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
