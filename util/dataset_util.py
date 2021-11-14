@@ -45,12 +45,12 @@ def load_iml_repertoire(filepath: Path, identifier: str = None):
 
 def make_olga_repertoire(confounder: str, confounder_name: str, sequence_count: int, path: Path, seed) -> Repertoire:
     olga_path = PathBuilder.build(path / 'olga')
+    log_path = olga_path / "log.txt"
 
     if confounder == "C1":
-        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {olga_path}/{seed}.tsv >> {olga_path}/log.txt")
+        make_default_olga_repertoire(olga_path, sequence_count, seed, log_path)
     else:
-        os.system(
-            f"olga-generate_sequences -n {sequence_count} -o {olga_path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {olga_path}/log.txt")
+        make_modified_olga_repertoire(olga_path, sequence_count, seed, log_path)
 
     repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{seed}.tsv"), result_path=path / "immuneML_naive",
                                       additional_metadata={confounder_name: confounder})
@@ -58,7 +58,25 @@ def make_olga_repertoire(confounder: str, confounder_name: str, sequence_count: 
     return repertoire
 
 
-def make_dataset(repertoires: List[Repertoire], path: Path, dataset_name: str, signal_names: List[str]):
+def make_modified_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
+    if isinstance(seed, int):
+        os.system(
+            f"olga-generate_sequences -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {log_path}")
+    else:
+        os.system(
+            f"olga-generate_sequences -n {sequence_count} -o {path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {log_path}")
+
+
+def make_default_olga_repertoire(path: Path, sequence_count: int, seed, log_path: Path):
+    if isinstance(seed, int):
+        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv >> {log_path}")
+    else:
+        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {path}/{seed}.tsv >> {log_path}")
+
+
+def make_dataset(repertoire_paths: List[Path], path: Path, dataset_name: str, signal_names: List[str]):
+    repertoires = [load_iml_repertoire(filepath=filepath) for filepath in repertoire_paths]
+
     assert len(repertoires) > 0, "No repertoires in the list, cannot make dataset."
 
     PathBuilder.build(path)
@@ -95,3 +113,15 @@ def make_AIRR_dataset(train_dataset: RepertoireDataset, test_dataset: Repertoire
     shutil.rmtree(tmp_path)
 
     return dataset
+
+
+def setup_path(path) -> Path:
+    path_obj = Path(path)
+
+    if path_obj.is_dir():
+        print(f"Removing {path_obj}...")
+        shutil.rmtree(path_obj)
+
+    PathBuilder.build(path_obj)
+
+    return path_obj
