@@ -8,8 +8,8 @@ from util.dataset_util import make_olga_repertoire
 from util.implanting import make_repertoire_with_signal, make_repertoire_without_signal
 
 
-def get_immune_state(confounder: bool, p_conf0: float, p_conf1: float) -> bool:
-    return bool(np.random.binomial(n=1, p=p_conf1) if confounder else np.random.binomial(n=1, p=p_conf0))
+def get_immune_state(confounder: bool, p_conf1: float, p_conf2: float) -> bool:
+    return bool(np.random.binomial(n=1, p=p_conf2) if confounder else np.random.binomial(n=1, p=p_conf1))
 
 
 def get_confounder(p) -> str:
