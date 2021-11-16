@@ -6,7 +6,7 @@ import numpy as np
 
 def plot_validation_vs_test_performance(iml_result: list, result_path: Path):
     train_state = iml_result[0]
-    metrics = list(train_state.metrics) + [train_state.optimization_metric]
+    metrics = sorted(list(train_state.metrics) + [train_state.optimization_metric], key=lambda m: m.name)
 
     performances_per_metric = {}
 
