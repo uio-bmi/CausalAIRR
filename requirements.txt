@@ -1,6 +1,6 @@
 olga>=1.2.4
 jupyter>=1.0
-git+https://github.com/uio-bmi/immuneML.git@main
+git+https://github.com/uio-bmi/immuneML.git@master
 pandas>=1.3.3
 numpy>=1.21.2
 git+https://github.com/uio-bmi/dagsim.git@main
