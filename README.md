@@ -1,5 +1,7 @@
 # CausalAIRR
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/uio-bmi/CausalAIRR/HEAD)
+
 This repository contains experiment for the CausalAIRR manuscript. It includes 3 experiments
 showing the influence of different variables on machine learning performance:
 
