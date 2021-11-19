@@ -10,7 +10,7 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 from immuneML.util.PathBuilder import PathBuilder
 
 
-def make_immune_signal(signal_name: str = "immune_state") -> Signal:
+def make_immune_state_signal(signal_name: str = "immune_state") -> Signal:
     motif1 = Motif(identifier="motif1", seed="EQY",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
 
@@ -19,6 +19,21 @@ def make_immune_signal(signal_name: str = "immune_state") -> Signal:
 
     signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={109: 0.5, 110: 0.5},
+                                                                  implanting_computation=ImplantingComputation.ROUND,
+                                                                  implanting=GappedMotifImplanting()))
+
+    return signal
+
+
+def make_confounding_signal(signal_name: str = "sex"):
+    motif1 = Motif(identifier="motif1", seed="ADR",
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+
+    motif2 = Motif(identifier="motif2", seed="ATS",
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+
+    signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
+                    implanting_strategy=HealthySequenceImplanting(sequence_position_weights={105: 0.7, 106: 0.3},
                                                                   implanting_computation=ImplantingComputation.ROUND,
                                                                   implanting=GappedMotifImplanting()))
 

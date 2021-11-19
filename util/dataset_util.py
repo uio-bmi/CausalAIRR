@@ -43,17 +43,13 @@ def load_iml_repertoire(filepath: Path, identifier: str = None):
     return repertoire
 
 
-def make_olga_repertoire(confounder: str, confounder_name: str, sequence_count: int, path: Path, seed) -> Repertoire:
+def make_olga_repertoire(sequence_count: int, path: Path, seed) -> Repertoire:
     olga_path = PathBuilder.build(path / 'olga')
     log_path = olga_path / "log.txt"
 
-    if confounder == "C1":
-        make_default_olga_repertoire(olga_path, sequence_count, seed, log_path)
-    else:
-        make_modified_olga_repertoire(olga_path, sequence_count, seed, log_path)
+    make_default_olga_repertoire(olga_path, sequence_count, seed, log_path)
 
-    repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{seed}.tsv"), result_path=path / "immuneML_naive",
-                                      additional_metadata={confounder_name: confounder})
+    repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{seed}.tsv"), result_path=path / "immuneML_naive")
 
     return repertoire
 
