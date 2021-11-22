@@ -12,10 +12,10 @@ from immuneML.util.PathBuilder import PathBuilder
 
 def make_immune_state_signal(signal_name: str = "immune_state") -> Signal:
     motif1 = Motif(identifier="motif1", seed="EQY",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
     motif2 = Motif(identifier="motif2", seed="QPQ",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
     signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={109: 0.5, 110: 0.5},
@@ -27,10 +27,10 @@ def make_immune_state_signal(signal_name: str = "immune_state") -> Signal:
 
 def make_confounding_signal(signal_name: str = "sex"):
     motif1 = Motif(identifier="motif1", seed="ADR",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
     motif2 = Motif(identifier="motif2", seed="ATS",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
     signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={105: 0.7, 106: 0.3},
@@ -50,7 +50,7 @@ def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimen
         raise ValueError("Protocol id can only be 1 or 2 for now.")
 
     motif1 = Motif(identifier="motif1", seed=seed,
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.5, 1: 0.5}))
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
     signal = Signal(identifier=signal_name, motifs=[motif1],
                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={114: 0.5, 115: 0.5},
