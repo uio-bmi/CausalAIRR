@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 from immuneML.data_model.repertoire.Repertoire import Repertoire
 from immuneML.simulation.implants.Motif import Motif
@@ -10,29 +11,31 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 from immuneML.util.PathBuilder import PathBuilder
 
 
-def make_immune_state_signal(signal_name: str = "immune_state") -> Signal:
+def make_immune_state_signals(signal_name: str = "immune_state") -> List[Signal]:
     motif1 = Motif(identifier="motif1", seed="EQY",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
-    motif2 = Motif(identifier="motif2", seed="QPQ",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
+    signal1 = Signal(identifier=signal_name, motifs=[motif1],
+                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={109: 0.5, 110: 0.5},
+                                                                   implanting_computation=ImplantingComputation.ROUND,
+                                                                   implanting=GappedMotifImplanting()))
 
-    signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
-                    implanting_strategy=HealthySequenceImplanting(sequence_position_weights={109: 0.5, 110: 0.5},
-                                                                  implanting_computation=ImplantingComputation.ROUND,
-                                                                  implanting=GappedMotifImplanting()))
+    motif2 = Motif(identifier="motif2", seed="QPR",
+                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.7, 1: 0.3}))
 
-    return signal
+    signal2 = Signal(identifier=signal_name, motifs=[motif2],
+                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={109: 0.5, 110: 0.5},
+                                                                   implanting_computation=ImplantingComputation.ROUND,
+                                                                   implanting=GappedMotifImplanting()))
+
+    return [signal1, signal2]
 
 
-def make_confounding_signal(signal_name: str = "sex"):
+def make_confounding_signal(signal_name: str = "confounder"):
     motif1 = Motif(identifier="motif1", seed="ADR",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
 
-    motif2 = Motif(identifier="motif2", seed="ATS",
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
-
-    signal = Signal(identifier=signal_name, motifs=[motif1, motif2],
+    signal = Signal(identifier=signal_name, motifs=[motif1],
                     implanting_strategy=HealthySequenceImplanting(sequence_position_weights={105: 0.7, 106: 0.3},
                                                                   implanting_computation=ImplantingComputation.ROUND,
                                                                   implanting=GappedMotifImplanting()))
@@ -41,7 +44,6 @@ def make_confounding_signal(signal_name: str = "sex"):
 
 
 def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimental_protocol"):
-
     if protocol_id == 1:
         seed = "QHF"
     elif protocol_id == 2:
@@ -73,4 +75,3 @@ def make_repertoire_with_signal(repertoire: Repertoire, signal: Signal, result_p
     new_repertoire = signal.implant_to_repertoire(repertoire=repertoire, repertoire_implanting_rate=repertoire_implanting_rate, path=result_path)
     new_repertoire.metadata['filename'] = new_repertoire.data_filename.name
     return new_repertoire
-

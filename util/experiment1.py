@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import List
 
 import numpy as np
 from immuneML.simulation.implants.Signal import Signal
@@ -8,15 +9,15 @@ from util.dataset_util import make_olga_repertoire
 from util.implanting import make_repertoire_with_signal, make_repertoire_without_signal
 
 
-def get_immune_state(confounder: bool, p_conf1: float, p_conf2: float) -> bool:
-    return bool(np.random.binomial(n=1, p=p_conf2) if confounder else np.random.binomial(n=1, p=p_conf1))
+def get_immune_state(confounder: str, p_conf1: float, p_conf2: float) -> bool:
+    return bool(np.random.binomial(n=1, p=p_conf2) if confounder == "C1" else np.random.binomial(n=1, p=p_conf1))
 
 
 def get_confounder(p) -> str:
-    return "C1" if np.random.binomial(n=1, p=p) > 0.5 else "C2"
+    return "C1" if np.random.binomial(n=1, p=p) else "C2"
 
 
-def get_repertoire(immune_state: bool, confounder: str, path: Path, sequence_count: int, immune_state_signal: Signal, confounding_signal: Signal,
+def get_repertoire(immune_state: bool, confounder: str, path: Path, sequence_count: int, immune_state_signals: List[Signal], confounding_signal: Signal,
                    seed: int, immune_state_implanting_rate: float, confounding_implanting_rate: float) -> Path:
     PathBuilder.build(path)
 
@@ -31,12 +32,13 @@ def get_repertoire(immune_state: bool, confounder: str, path: Path, sequence_cou
         repertoire = make_repertoire_without_signal(repertoire=naive_repertoire, signal_name=confounding_signal.id,
                                                     result_path=path / "immuneML_with_confounding/")
 
-    # implant a signal in the repertoire based on the immune state
+    # implant a signal in the repertoire based on the immune state and confounder
     if immune_state:
-        repertoire = make_repertoire_with_signal(repertoire=repertoire, signal=immune_state_signal, result_path=path / "immuneML_with_signal/",
+        signal = immune_state_signals[0] if confounder == "C1" else immune_state_signals[1]
+        repertoire = make_repertoire_with_signal(repertoire=repertoire, signal=signal, result_path=path / "immuneML_with_signal/",
                                                  repertoire_implanting_rate=immune_state_implanting_rate)
     else:
-        repertoire = make_repertoire_without_signal(repertoire=repertoire, signal_name=immune_state_signal.id,
+        repertoire = make_repertoire_without_signal(repertoire=repertoire, signal_name=immune_state_signals[0].id,
                                                     result_path=path / "immuneML_with_signal/")
 
     return repertoire.data_filename
