@@ -1,1 +1,3 @@
+pip install setuptools==50.3.2
 pip install pystache==0.5.4
+pip install git+https://github.com/uio-bmi/immuneML.git@master
