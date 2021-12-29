@@ -3,3 +3,4 @@ pip install pystache==0.5.4
 pip install git+https://github.com/uio-bmi/immuneML.git@master
 pip install git+https://github.com/uio-bmi/dagsim.git@main
 pip install graphviz
+pip install olga
