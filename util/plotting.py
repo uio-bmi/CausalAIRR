@@ -5,9 +5,10 @@ import numpy as np
 from immuneML.ml_metrics.Metric import Metric
 
 
-def plot_balanced_error_rate(iml_result: list, result_path: Path):
+def plot_balanced_error_rate(iml_result: list, result_path):
     train_state = iml_result[0]
-    assert Metric['balanced_accuracy'] in train_state.metrics or Metric['balanced_accuracy'] == train_state.optimization_metric
+
+    assert Metric['BALANCED_ACCURACY'] in train_state.metrics or Metric['BALANCED_ACCURACY'] == train_state.optimization_metric
 
     selection_state = train_state.assessment_states[0].label_states[train_state.label_configuration.get_labels_by_name()[0]].selection_state
 
@@ -17,14 +18,33 @@ def plot_balanced_error_rate(iml_result: list, result_path: Path):
             for item in hp_item:
                 validation.append(1 - item.performance['balanced_accuracy'])
 
-    performances = {
+    performances = {'balanced error rate': {
         "validation": validation,
-        "test": [1 - item.performance['balanced_accuracy'] for item in train_state.optimal_hp_items.items()]
-    }
+        "test": [1 - train_state.optimal_hp_items['immune_state'].performance['balanced_accuracy']]
+    }}
 
     figure = make_performance_barplot(performances, result_path / "validation_vs_test_performance_balanced_error_rate.html")
     figure.show()
+def plot_balanced_error_rate(iml_result: list, result_path):
+    train_state = iml_result[0]
 
+    assert Metric['BALANCED_ACCURACY'] in train_state.metrics or Metric['BALANCED_ACCURACY'] == train_state.optimization_metric
+
+    selection_state = train_state.assessment_states[0].label_states[train_state.label_configuration.get_labels_by_name()[0]].selection_state
+
+    validation = []
+    for hp_setting, hp_item in selection_state.hp_items.items():
+        if hp_setting == selection_state.optimal_hp_setting.get_key():
+            for item in hp_item:
+                validation.append(1 - item.performance['balanced_accuracy'])
+
+    performances = {'balanced error rate': {
+        "validation": validation,
+        "test": [1 - train_state.optimal_hp_items['immune_state'].performance['balanced_accuracy']]
+    }}
+
+    figure = make_performance_barplot(performances, result_path / "validation_vs_test_performance_balanced_error_rate.html")
+    figure.show()
 
 def plot_validation_vs_test_performance(iml_result: list, result_path: Path):
     train_state = iml_result[0]
