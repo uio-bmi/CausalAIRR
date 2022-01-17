@@ -43,25 +43,6 @@ def make_confounding_signal(signal_name: str = "confounder"):
     return signal
 
 
-def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimental_protocol"):
-    if protocol_id == 1:
-        seed = "QHF"
-    elif protocol_id == 2:
-        seed = "EAF"
-    else:
-        raise ValueError("Protocol id can only be 1 or 2 for now.")
-
-    motif1 = Motif(identifier="motif1", seed=seed,
-                   instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
-
-    signal = Signal(identifier=signal_name, motifs=[motif1],
-                    implanting_strategy=HealthySequenceImplanting(sequence_position_weights={114: 0.5, 115: 0.5},
-                                                                  implanting_computation=ImplantingComputation.POISSON,
-                                                                  implanting=GappedMotifImplanting()))
-
-    return signal
-
-
 def make_repertoire_without_signal(repertoire: Repertoire, signal_name: str, result_path: Path) -> Repertoire:
     new_metadata = {**repertoire.metadata, **{signal_name: False}}
     new_repertoire = Repertoire.build_from_sequence_objects(repertoire.sequences, PathBuilder.build(result_path),
