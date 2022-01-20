@@ -1,6 +1,7 @@
 import uuid
 from pathlib import Path
 
+import yaml
 from immuneML.simulation.implants.Signal import Signal
 from immuneML.util.PathBuilder import PathBuilder
 import numpy as np
@@ -18,9 +19,9 @@ def get_hospital(p) -> str:
     return "hospital1" if np.random.binomial(n=1, p=p) > 0.5 else "hospital2"
 
 
-def get_exp_protocol(hospital: str) -> Signal:
+def get_exp_protocol(hospital: str) -> int:
     protocol_id = 1 if hospital == "hospital1" else 2
-    return make_exp_protocol_signal(protocol_id=protocol_id, signal_name="experimental_protocol")
+    return protocol_id
 
 
 def get_selection(hospital: str, immune_state: bool) -> bool:
@@ -36,7 +37,7 @@ def get_selection(hospital: str, immune_state: bool) -> bool:
             return bool(np.random.binomial(1, 0.8))
 
 
-def get_repertoire(immune_state: bool, experimental_protocol: Signal, path: Path, sequence_count: int,
+def get_repertoire(immune_state: bool, experimental_protocol_id: int, path: Path, sequence_count: int,
                    immune_state_signal: Signal, immune_state_implanting_rate: float, protocol_implanting_rate: float) -> str:
     PathBuilder.build(path)
 
@@ -53,8 +54,24 @@ def get_repertoire(immune_state: bool, experimental_protocol: Signal, path: Path
                                                     result_path=path / "immuneML_with_signal/")
 
     # simulate experimental protocol signal in the repertoire
-    repertoire = make_repertoire_with_signal(repertoire=repertoire, signal=experimental_protocol,
+
+    exp_protocol_signal = make_exp_protocol_signal(protocol_id=experimental_protocol_id, signal_name="experimental_protocol")
+
+    repertoire = make_repertoire_with_signal(repertoire=repertoire, signal=exp_protocol_signal,
                                              result_path=path / "immuneML_with_protocol/",
                                              repertoire_implanting_rate=protocol_implanting_rate)
 
+    update_protocol_metadata(repertoire.metadata_filename, experimental_protocol_id)
+
     return repertoire.data_filename
+
+
+def update_protocol_metadata(metadata_filename: Path, experimental_protocol_id: int):
+
+    with metadata_filename.open('r') as file:
+        metadata = yaml.safe_load(file)
+
+    metadata['experimental_protocol'] = experimental_protocol_id
+
+    with metadata_filename.open('w') as file:
+        yaml.dump(metadata, file)

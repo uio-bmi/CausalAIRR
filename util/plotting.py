@@ -25,6 +25,8 @@ def plot_balanced_error_rate(iml_result: list, result_path):
 
     figure = make_performance_barplot(performances, result_path / "validation_vs_test_performance_balanced_error_rate.html")
     figure.show()
+
+
 def plot_balanced_error_rate(iml_result: list, result_path):
     train_state = iml_result[0]
 
@@ -45,6 +47,7 @@ def plot_balanced_error_rate(iml_result: list, result_path):
 
     figure = make_performance_barplot(performances, result_path / "validation_vs_test_performance_balanced_error_rate.html")
     figure.show()
+
 
 def plot_validation_vs_test_performance(iml_result: list, result_path: Path):
     train_state = iml_result[0]
@@ -72,7 +75,6 @@ def plot_validation_vs_test_performance(iml_result: list, result_path: Path):
 
 
 def make_performance_barplot(performances_per_metric: dict, result_path: Path = None) -> go.Figure:
-
     if not result_path.parent.is_dir():
         result_path.mkdir(mode=755)
 

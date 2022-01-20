@@ -102,7 +102,7 @@ def make_AIRR_dataset(train_dataset: RepertoireDataset, test_dataset: Repertoire
     train_metadata.append(test_metadata).to_csv(metadata_file, index=False)
 
     dataset = RepertoireDataset(labels=train_dataset.labels, repertoires=train_dataset.repertoires + test_dataset.repertoires,
-                                name='experiment1_dataset', metadata_file=metadata_file)
+                                name='dataset', metadata_file=metadata_file)
 
     AIRRExporter.export(dataset, path, RegionType.IMGT_CDR3)
 
