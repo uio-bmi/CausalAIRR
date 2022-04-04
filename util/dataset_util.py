@@ -1,7 +1,10 @@
 import os
 import shutil
+from glob import glob
 from pathlib import Path
 from typing import List
+import pandas as pd
+from sklearn.metrics import matthews_corrcoef
 
 import numpy as np
 from immuneML.IO.dataset_export.AIRRExporter import AIRRExporter
@@ -43,9 +46,11 @@ def load_iml_repertoire(filepath: Path, identifier: str = None):
     return repertoire
 
 
-def make_olga_repertoire(sequence_count: int, path: Path, seed) -> Repertoire:
+def make_olga_repertoire(sequence_count: int, path: Path) -> Repertoire:
     olga_path = PathBuilder.build(path / 'olga')
     log_path = olga_path / "log.txt"
+
+    seed = len(glob(str(olga_path / "*.tsv"))) + 1
 
     make_default_olga_repertoire(olga_path, sequence_count, seed, log_path)
 
@@ -55,19 +60,12 @@ def make_olga_repertoire(sequence_count: int, path: Path, seed) -> Repertoire:
 
 
 def make_modified_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
-    if isinstance(seed, int):
-        os.system(
-            f"olga-generate_sequences -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {log_path}")
-    else:
-        os.system(
-            f"olga-generate_sequences -n {sequence_count} -o {path}/{seed}.tsv --set_custom_model_VDJ ./olga_model_removed_TRBV5_1/ >> {log_path}")
+    os.system(f"olga-generate_sequences -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv --set_custom_model_VDJ "
+              f"./olga_model_removed_TRBV5_1/ >> {log_path}")
 
 
-def make_default_olga_repertoire(path: Path, sequence_count: int, seed, log_path: Path):
-    if isinstance(seed, int):
-        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv >> {log_path}")
-    else:
-        os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {path}/{seed}.tsv >> {log_path}")
+def make_default_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
+    os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv >> {log_path}")
 
 
 def make_dataset(repertoire_paths: List[Path], path: Path, dataset_name: str, signal_names: List[str]):
@@ -121,3 +119,25 @@ def setup_path(path) -> Path:
     PathBuilder.build(path_obj)
 
     return path_obj
+
+
+def print_all_simulation_stats(start_path: Path):
+    metadata_files = glob(str(start_path / "**/*metadata.csv"), recursive=True)
+
+    for metadata_file in metadata_files:
+        print(f"\n\n{Path(metadata_file).name}\n")
+        for k, v in get_simulation_stats(metadata_file).items():
+            print(k)
+            print(f"{v}\n")
+
+
+def get_simulation_stats(metadata_path: Path):
+    df = pd.read_csv(metadata_path)
+    conf_values, conf_counts = np.unique(df['confounder'], return_counts=True)
+    immune_values, immune_counts = np.unique(df['immune_state'], return_counts=True)
+    return {
+        "Matthews correlation coefficient between immune state and confounder": matthews_corrcoef(df['immune_state'], df['confounder']),
+        "Confounder stats": {val: count for val, count in zip(conf_values, conf_counts)},
+        "Immune state stats": {val: count for val, count in zip(immune_values, immune_counts)},
+        "Immune state per confounder value": df[['confounder', 'immune_state']].value_counts()
+    }

@@ -31,7 +31,7 @@ def make_immune_state_signals(signal_name: str = "immune_state") -> List[Signal]
     return [signal1, signal2]
 
 
-def make_confounding_signal(signal_name: str = "confounder"):
+def make_confounder_signal(signal_name: str = "confounder"):
     motif1 = Motif(identifier="motif1", seed="ADR",
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 0.9, 1: 0.1}))
 
