@@ -59,11 +59,6 @@ def make_olga_repertoire(sequence_count: int, path: Path) -> Repertoire:
     return repertoire
 
 
-def make_modified_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
-    os.system(f"olga-generate_sequences -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv --set_custom_model_VDJ "
-              f"./olga_model_removed_TRBV5_1/ >> {log_path}")
-
-
 def make_default_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
     os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv >> {log_path}")
 
@@ -121,23 +116,27 @@ def setup_path(path) -> Path:
     return path_obj
 
 
-def print_all_simulation_stats(start_path: Path):
+def print_all_simulation_stats(start_path: Path, columns: list, compute_correlation: bool = True):
     metadata_files = glob(str(start_path / "**/*metadata.csv"), recursive=True)
 
     for metadata_file in metadata_files:
         print(f"\n\n{Path(metadata_file).name}\n")
-        for k, v in get_simulation_stats(metadata_file).items():
+        for k, v in get_simulation_stats(metadata_file, columns, compute_correlation).items():
             print(k)
             print(f"{v}\n")
 
 
-def get_simulation_stats(metadata_path: Path):
+def get_simulation_stats(metadata_path: Path, columns: list, compute_correlation):
     df = pd.read_csv(metadata_path)
-    conf_values, conf_counts = np.unique(df['confounder'], return_counts=True)
-    immune_values, immune_counts = np.unique(df['immune_state'], return_counts=True)
-    return {
-        "Matthews correlation coefficient between immune state and confounder": matthews_corrcoef(df['immune_state'], df['confounder']),
-        "Confounder stats": {val: count for val, count in zip(conf_values, conf_counts)},
-        "Immune state stats": {val: count for val, count in zip(immune_values, immune_counts)},
-        "Immune state per confounder value": df[['confounder', 'immune_state']].value_counts()
-    }
+    output = {}
+    for key in columns:
+        values, counts = np.unique(df[key], return_counts=True)
+        output[f"{key} stats"] = {val: count for val, count in zip(values, counts)}
+
+    if compute_correlation and len(columns) == 2:
+        try:
+            output[f"Matthews correlation coefficient between {columns}"] = matthews_corrcoef(df[columns[0]], df[columns[1]])
+        except Exception as e:
+            print("Exception occurred while computing Matthews correlation coefficient.")
+
+    return output

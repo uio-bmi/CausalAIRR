@@ -33,11 +33,13 @@ def plot_error_rate_box(data: dict, result_path):
 
     i = 0
     for key in data:
-        figure.add_box(boxpoints='all', name=key, y=data[key], marker_color=px.colors.diverging.Tealrose[i], text=np.median(data[key]).round(decimal_count))
-        figure.add_annotation(x=key, y=np.median(data[key]), text=str(np.median(data[key]).astype(float).round(decimal_count)), showarrow=False, yshift=15, font_color='black')
+        figure.add_box(boxpoints='all', name=key, y=data[key], marker_color=px.colors.diverging.Tealrose[i],
+                       text=np.median(data[key]).round(decimal_count), pointpos=0)
+        figure.add_annotation(x=key, y=np.median(data[key]), text=str(np.median(data[key]).astype(float).round(decimal_count)), showarrow=False,
+                              yshift=15, font_color='black')
         i += 1
 
-    figure.update_layout(xaxis={"title": "balanced error rates", 'color': 'black'}, template='plotly_white')
+    figure.update_layout(yaxis={"title": "balanced error rate", 'color': 'black'}, template='plotly_white', font_size=15, font_color='black')
     figure.update_xaxes(showline=True, linewidth=1, linecolor='black')
     figure.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black')
 
