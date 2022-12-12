@@ -140,3 +140,10 @@ def get_simulation_stats(metadata_path: Path, columns: list, compute_correlation
             print("Exception occurred while computing Matthews correlation coefficient.")
 
     return output
+
+
+def write_to_file(df, path):
+    if path.is_file():
+        df.to_csv(path, sep='\t', index=None, mode='a', header=False)
+    else:
+        df.to_csv(path, sep="\t", index=None, header=True)

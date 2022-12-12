@@ -1,6 +1,13 @@
+import logging
 from pathlib import Path
+import random
 from typing import List
 
+import numpy as np
+import pandas as pd
+from immuneML.data_model.receptor.RegionType import RegionType
+from immuneML.data_model.receptor.receptor_sequence.ReceptorSequence import ReceptorSequence
+from immuneML.data_model.receptor.receptor_sequence.SequenceMetadata import SequenceMetadata
 from immuneML.data_model.repertoire.Repertoire import Repertoire
 from immuneML.simulation.implants.Motif import Motif
 from immuneML.simulation.implants.Signal import Signal
@@ -90,3 +97,27 @@ def make_repertoire_with_signal(repertoire: Repertoire, signal: Signal, result_p
     new_repertoire = signal.implant_to_repertoire(repertoire=repertoire, repertoire_implanting_rate=repertoire_implanting_rate, path=result_path)
     new_repertoire.metadata['filename'] = new_repertoire.data_filename.name
     return new_repertoire
+
+
+def make_sequence_with_signal(sequence, signal: Signal) -> str:
+    if isinstance(sequence, str):
+        seq = ReceptorSequence(amino_acid_sequence=sequence, metadata=SequenceMetadata(region_type=RegionType.IMGT_JUNCTION.name))
+    else:
+        seq = sequence
+
+    motif = random.choice(signal.motifs)
+
+    return signal.implanting_strategy.implant_in_sequence(seq, signal, motif=motif).amino_acid_sequence
+
+
+def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_rate: float):
+    sequences['signal'] = False
+    seq_with_signal_count = round(implanting_rate * sequences.shape[0])
+    indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_signal_count, replace=False)
+
+    for index in indices:
+        sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
+        sequences.at[index, 'sequence'] = ''
+        sequences.at[index, 'signal'] = True
+
+    return sequences
