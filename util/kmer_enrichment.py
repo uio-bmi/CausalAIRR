@@ -38,9 +38,9 @@ def make_contingency_table(sequences: pd.DataFrame, k: int) -> pd.DataFrame:
     return contingency_table_df
 
 
-def find_enriched_kmers(contingency_table: pd.DataFrame, p_value_threshold: float):
-    relevant_kmers = contingency_table[contingency_table['p_value'] < p_value_threshold]
-    return relevant_kmers[['kmer', 'p_value']]
+def find_enriched_kmers(contingency_table: pd.DataFrame, fdr: float):
+    relevant_kmers = contingency_table[contingency_table['q_value'] < fdr]
+    return relevant_kmers[['kmer', 'q_value']]
 
 
 def compute_p_value(contingency_table: pd.DataFrame):
@@ -62,17 +62,17 @@ def get_kmer_presence_from_sequences(sequences: pd.DataFrame, k: int):
     return kmer_per_sequence
 
 
-def compute_fdr(sequences: pd.DataFrame, rejected_null_count: int, k: int, p_value_threshold: float, permutation_count: int = 100) -> float:
-    rejected_null_permuted = np.zeros(permutation_count, dtype=float)
+def compute_q_values(p_values: np.ndarray, pi0: float = 0.999) -> np.ndarray:
+    sorted_indices = np.argsort(p_values)
+    m = float(p_values.shape[0])
+    q_values = pi0 * p_values[sorted_indices]
+    q_values[-1] = min(q_values[-1], 1.0)
+    for i in range(int(m) - 2, -1, -1):
+        q_values[i] = min(q_values[i] * m / (i+1.),  # i+1 because it's zero based
+                          q_values[i+1])
+        print(f"{i}-th element: {q_values[i]}")
 
-    for permutation in range(permutation_count):
-
-        permuted_seqs = make_seqs_with_permuted_labels(sequences)
-        contingency_table = make_contingency_table(permuted_seqs, k)
-        contingency_with_p_value = compute_p_value(contingency_table)
-        rejected_null_permuted[permutation] = find_enriched_kmers(contingency_with_p_value, p_value_threshold).shape[0]
-
-    return rejected_null_permuted.sum() / rejected_null_count / permutation_count
+    return q_values[sorted_indices]
 
 
 def make_seqs_with_permuted_labels(sequences: pd.DataFrame) -> pd.DataFrame:

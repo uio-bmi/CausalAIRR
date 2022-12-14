@@ -36,7 +36,7 @@ class SimConfig:
     p_noise: float
     olga_model_name: str
     signal: Signal
-    p_value_thresholds: List[float]
+    fdrs: List[float]
     implanting_config: ImplantingConfig
 
 

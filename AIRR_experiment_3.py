@@ -2,17 +2,17 @@ import itertools
 import logging
 from datetime import datetime
 from pathlib import Path
-import random
 
 import pandas as pd
 from immuneML.simulation.implants.Signal import Signal
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from statsmodels.stats.multitest import fdrcorrection
 
 from util.SimConfig import SimConfig, make_signal, ImplantingConfig, ImplantingGroup, ImplantingUnit
 from util.dataset_util import setup_path, write_to_file
 from util.implanting import implant_in_sequences
-from util.kmer_enrichment import find_enriched_kmers, make_contingency_table, compute_p_value, compute_fdr
+from util.kmer_enrichment import find_enriched_kmers, make_contingency_table, compute_p_value
 from util.olga_util import gen_olga_sequences
 from util.util import overlaps, get_overlap_length, write_config
 
@@ -49,23 +49,19 @@ def experiment3_analysis(path, implanting_group: ImplantingGroup, repetition_ind
     results = []
     motifs = sim_config.signal.motifs
 
-    for p_value_threshold in sim_config.p_value_thresholds:
-        enriched_kmers = find_enriched_kmers(contingency_with_p_value, p_value_threshold)
-        FDR = ""
+    for fdr in sim_config.fdrs:
+        q_values = fdrcorrection(contingency_with_p_value.p_value, alpha=fdr)[1]
+        contingency_with_p_value['q_value'] = q_values
+        enriched_kmers = find_enriched_kmers(contingency_with_p_value, fdr)
 
-        write_to_file(enriched_kmers, exp_path / f"enriched_{sim_config.k}mers_{p_value_threshold}.tsv")
+        write_to_file(enriched_kmers, exp_path / f"enriched_{sim_config.k}mers_{fdr}.tsv")
 
         metrics = assess_performance(motifs, enriched_kmers, sim_config.k)
-        results.append({**{"k": sim_config.k, "p_value_threshold": p_value_threshold, "group": implanting_group.name, "FDR": FDR,
+        results.append({**{"k": sim_config.k, "fdr": fdr, "group": implanting_group.name,
                            "repetition": repetition_index}, **metrics})
-        logging.info(f"Finished for p-value threshold={p_value_threshold}, group={implanting_group.name}, repetition={repetition_index}.")
+        logging.info(f"Finished for FDR={fdr}, group={implanting_group.name}, repetition={repetition_index}.")
 
     return results
-
-
-def make_noisy_labels(sequences: pd.DataFrame, label: str, p_noise: float) -> pd.DataFrame:
-    sequences[label] = [val if random.uniform(0, 1) > p_noise else not val for val in sequences[label]]
-    return sequences
 
 
 def generate_sequences(olga_model_name: str, impl_group: ImplantingGroup, signal: Signal, p_noise: float, path: Path) \
@@ -82,9 +78,8 @@ def gen_sequences_for_implanting_unit(implanting_unit: ImplantingUnit, olga_mode
                                       p_noise: float, seq_path: Path, group_name: str):
 
     sequences = gen_olga_sequences(olga_model_name, implanting_unit.skip_genes, seq_count)
-    sequences = implant_in_sequences(sequences, signal, implanting_unit.implanting_prob)
+    sequences = implant_in_sequences(sequences, signal, implanting_unit.implanting_prob, p_noise)
     sequences = add_column(sequences, 'batch', batch_name)
-    sequences = make_noisy_labels(sequences, 'signal', p_noise)
     sequences = add_column(sequences, 'group', group_name)
     write_to_file(sequences, seq_path)
 
@@ -96,12 +91,12 @@ def add_column(sequences: pd.DataFrame, col_name: str, col_val):
 
 def plot_proportion_discovered(df: pd.DataFrame, path: Path, k: int):
 
-    fig = make_subplots(1, df['p_value_threshold'].unique().shape[0],
-                        subplot_titles=[f"p-value: {pvt:.2e}" for pvt in df['p_value_threshold'].unique()],
+    fig = make_subplots(1, df['fdr'].unique().shape[0],
+                        subplot_titles=[f"FDR: {fdr}" for fdr in df['fdr'].unique()],
                         x_title="overlap length", y_title="number of enriched k-mers", horizontal_spacing=0.05)
 
-    for index, p_value_threshold in enumerate(df['p_value_threshold'].unique()):
-        tmp_df = df[df.p_value_threshold == p_value_threshold]
+    for index, fdr in enumerate(df['fdr'].unique()):
+        tmp_df = df[df.fdr == fdr]
 
         for gene_index, group in enumerate(tmp_df['group'].unique()):
             tmp_y = tmp_df[tmp_df['group'] == group][[f'overlap_{overlap_length}' for overlap_length in range(k + 1)]]
@@ -143,9 +138,9 @@ def main(config: SimConfig):
 
 if __name__ == "__main__":
 
-    config = SimConfig(k=3, repetitions=10, p_noise=0.2, olga_model_name='humanTRB',
+    config = SimConfig(k=3, repetitions=10, p_noise=0.1, olga_model_name='humanTRB',
                        signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5}),
-                       p_value_thresholds=sorted([0.01, 0.005, 0.001, 0.0005]),
+                       fdrs=[0.05, 0.01],
                        implanting_config=ImplantingConfig(
                            control=ImplantingGroup(baseline=ImplantingUnit(0.5, []),
                                                    modified=ImplantingUnit(0.5, []), name='control', seq_count=10000),

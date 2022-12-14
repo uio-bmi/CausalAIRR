@@ -110,14 +110,14 @@ def make_sequence_with_signal(sequence, signal: Signal) -> str:
     return signal.implanting_strategy.implant_in_sequence(seq, signal, motif=motif).amino_acid_sequence
 
 
-def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_rate: float):
+def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_rate: float, p_noise: float):
     sequences['signal'] = False
     seq_with_signal_count = round(implanting_rate * sequences.shape[0])
     indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_signal_count, replace=False)
 
     for index in indices:
-        sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
-        sequences.at[index, 'sequence'] = ''
+        if random.uniform(0, 1) > p_noise:
+            sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
         sequences.at[index, 'signal'] = True
 
     return sequences
