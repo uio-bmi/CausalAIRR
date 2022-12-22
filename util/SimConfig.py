@@ -38,6 +38,7 @@ class SimConfig:
     signal: Signal
     fdrs: List[float]
     implanting_config: ImplantingConfig
+    sequence_encoding: str = "continuous_kmer"
 
 
 def make_signal(motif_seeds: List[str], seq_position_weights: dict = None):

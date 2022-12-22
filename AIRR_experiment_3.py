@@ -50,9 +50,9 @@ def experiment3_analysis(path, implanting_group: ImplantingGroup, repetition_ind
     motifs = sim_config.signal.motifs
 
     for fdr in sim_config.fdrs:
-        q_values = fdrcorrection(contingency_with_p_value.p_value, alpha=fdr)[1]
+        q_values = fdrcorrection(contingency_with_p_value.p_value)[1]
         contingency_with_p_value['q_value'] = q_values
-        enriched_kmers = find_enriched_kmers(contingency_with_p_value, fdr)
+        enriched_kmers = find_enriched_kmers(contingency_with_p_value, fdr) # TODO replace this with rejected list from fdrcorrection func
 
         write_to_file(enriched_kmers, exp_path / f"enriched_{sim_config.k}mers_{fdr}.tsv")
 
@@ -68,13 +68,13 @@ def generate_sequences(olga_model_name: str, impl_group: ImplantingGroup, signal
                        -> pd.DataFrame:
 
     seq_path = path / "sequences.tsv"
-    gen_sequences_for_implanting_unit(impl_group.baseline, olga_model_name, impl_group.seq_count, signal, 'baseline_batch', p_noise, seq_path, impl_group.name)
-    gen_sequences_for_implanting_unit(impl_group.modified, olga_model_name, impl_group.seq_count, signal, 'modified_batch', p_noise, seq_path, impl_group.name)
+    gen_sequences_for_implanting_unit(impl_group.baseline, olga_model_name, impl_group.seq_count, signal, 0, p_noise, seq_path, impl_group.name)
+    gen_sequences_for_implanting_unit(impl_group.modified, olga_model_name, impl_group.seq_count, signal, 1, p_noise, seq_path, impl_group.name)
 
     return pd.read_csv(seq_path, sep="\t")
 
 
-def gen_sequences_for_implanting_unit(implanting_unit: ImplantingUnit, olga_model_name: str, seq_count: int, signal: Signal, batch_name: str,
+def gen_sequences_for_implanting_unit(implanting_unit: ImplantingUnit, olga_model_name: str, seq_count: int, signal: Signal, batch_name: int,
                                       p_noise: float, seq_path: Path, group_name: str):
 
     sequences = gen_olga_sequences(olga_model_name, implanting_unit.skip_genes, seq_count)
@@ -138,7 +138,7 @@ def main(config: SimConfig):
 
 if __name__ == "__main__":
 
-    config = SimConfig(k=3, repetitions=10, p_noise=0.1, olga_model_name='humanTRB',
+    config = SimConfig(k=3, repetitions=10, p_noise=0.49, olga_model_name='humanTRB',
                        signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5}),
                        fdrs=[0.05, 0.01],
                        implanting_config=ImplantingConfig(

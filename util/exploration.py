@@ -14,9 +14,9 @@ from immuneML.reports.encoding_reports.FeatureComparison import FeatureCompariso
 from immuneML.reports.encoding_reports.FeatureDistribution import FeatureDistribution
 from immuneML.reports.encoding_reports.FeatureValueBarplot import FeatureValueBarplot
 
-from olga_util import gen_olga_sequences
-from kmer_enrichment import get_kmer_presence_from_sequences
-from dataset_util import setup_path
+from .olga_util import gen_olga_sequences
+from .kmer_enrichment import get_kmer_presence_from_sequences
+from .dataset_util import setup_path
 
 
 def gene_distribution_in_olga(sequences: pd.DataFrame, path: Path):
