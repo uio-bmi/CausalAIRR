@@ -1,13 +1,10 @@
 import copy
 import logging
-import random
 from pathlib import Path
-from typing import Tuple, Dict
+from typing import Tuple
 
-import numpy as np
 import pandas as pd
 import yaml
-import plotly.express as px
 from immuneML.analysis.data_manipulation.NormalizationType import NormalizationType
 from immuneML.data_model.dataset.SequenceDataset import SequenceDataset
 from immuneML.data_model.encoded_data.EncodedData import EncodedData
@@ -16,30 +13,26 @@ from immuneML.encodings.kmer_frequency.KmerFrequencyEncoder import KmerFrequency
 from immuneML.environment.Label import Label
 from immuneML.environment.LabelConfiguration import LabelConfiguration
 from immuneML.environment.SequenceType import SequenceType
-from immuneML.hyperparameter_optimization.config.SplitConfig import SplitConfig
-from immuneML.hyperparameter_optimization.config.SplitType import SplitType
 from immuneML.util.PathBuilder import PathBuilder
 from immuneML.util.ReadsType import ReadsType
-from immuneML.workflows.steps.data_splitter.DataSplitter import DataSplitter
-from immuneML.workflows.steps.data_splitter.DataSplitterParams import DataSplitterParams
 from sklearn.linear_model import LogisticRegression, LinearRegression
-from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score
+from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score
 from statsmodels.stats.multitest import fdrcorrection
-import plotly.graph_objects as go
 
-from causal_airr_scripts.experiment3.sequence_generation import generate_sequences
-from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingGroup
-from causal_airr_scripts.experiment3.exp_summary_plots import make_summary, plot_enriched_kmers, merge_dfs, plot_log_reg_coefficients
 from causal_airr_scripts.dataset_util import get_dataset_from_dataframe, write_to_file
+from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingGroup, ImplantingUnit
+from causal_airr_scripts.experiment3.exp_summary_plots import make_summary, plot_enriched_kmers, merge_dfs, plot_log_reg_coefficients
+from causal_airr_scripts.experiment3.sequence_generation import generate_sequences
 from causal_airr_scripts.kmer_enrichment import make_contingency_table, compute_p_value
 from causal_airr_scripts.util import overlaps, get_overlap_length
 
 
 class Experiment3:
 
-    def __init__(self, sim_config: SimConfig, p_correction_points: float):
+    def __init__(self, sim_config: SimConfig, p_correction_points: float, test_percentage: float = 0.3):
         self.sim_config = sim_config
         self.p_correction_points = p_correction_points
+        self.test_percentage = test_percentage
 
     @property
     def label_configuration(self) -> LabelConfiguration:
@@ -48,6 +41,14 @@ class Experiment3:
     @property
     def signal_name(self) -> str:
         return self.sim_config.signal.id
+
+    @property
+    def col_mapping(self) -> dict:
+        return {0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: self.signal_name, 4: 'batch'}
+
+    @property
+    def meta_col_mapping(self) -> dict:
+        return {self.signal_name: self.signal_name, 'batch': 'batch'}
 
     def run(self, path: Path):
 
@@ -67,7 +68,7 @@ class Experiment3:
 
     def _make_enriched_kmer_summary_df(self, path: Path) -> pd.DataFrame:
         batch_corrected_files = [path / f'batch/with_correction/repetition_{rep}/enriched_k-mers/metrics.tsv'
-                                  for rep in range(1, self.sim_config.repetitions + 1)]
+                                 for rep in range(1, self.sim_config.repetitions + 1)]
 
         batch_not_corrected_files = [path / f'batch/no_correction/repetition_{rep}/enriched_k-mers/metrics.tsv'
                                      for rep in range(1, self.sim_config.repetitions + 1)]
@@ -94,17 +95,17 @@ class Experiment3:
         write_to_file(pd.DataFrame(all_metrics), setting_path / 'metrics.tsv')
 
     def run_one_repetition(self, path: Path, impl_group: ImplantingGroup, correct: bool) -> dict:
-        dataset = self.simulate_data(PathBuilder.build(path / 'dataset'), impl_group)
+        train_dataset = self.simulate_data(PathBuilder.build(path / 'dataset'), impl_group)
 
-        self.report_enriched_kmers(dataset, PathBuilder.build(path / f'enriched_k-mers'))
+        self.report_enriched_kmers(train_dataset, PathBuilder.build(path / f'enriched_k-mers'))
 
-        dataset = get_dataset_from_dataframe(dataset, path / 'iml_dataset.tsv',
-                                             col_mapping={0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: self.signal_name, 4: 'batch'},
-                                             meta_col_mapping={self.signal_name: self.signal_name, 'batch': 'batch'})
+        train_dataset = get_dataset_from_dataframe(train_dataset, path / 'iml_dataset.tsv', col_mapping=self.col_mapping,
+                                                   meta_col_mapping=self.meta_col_mapping)
 
-        train_dataset, test_dataset = self.split_to_train_test(dataset, PathBuilder.build(path / 'split_datasets'))
+        test_dataset = self.make_test_dataset(PathBuilder.build(path / 'test_dataset'), train_dataset.get_example_count())
+
         train_dataset, test_dataset = self.encode_with_kmers(train_dataset, test_dataset, path / 'encoding')
-        train_dataset, test_dataset = self.correct_encoded_for_batch(train_dataset, test_dataset, path / 'correction', correct)
+        train_dataset = self.correct_encoded_for_batch(train_dataset, path / 'correction', correct)
         log_reg = self.train_log_reg(train_dataset)
 
         metrics = self.assess_log_reg(log_reg, test_dataset, PathBuilder.build(path / 'assessment'))
@@ -142,27 +143,30 @@ class Experiment3:
     def _assess_kmer_discovery(self, motifs: list, enriched_kmers, k: int):
         if enriched_kmers.shape[0] > 0:
             kmers_in_motifs = sum([int(kmer in [motif.seed for motif in motifs]) for kmer in enriched_kmers.index]) / enriched_kmers.shape[0]
-            kmers_in_partial_motifs = sum([int(any(overlaps(kmer, motif.seed) for motif in motifs)) for kmer in enriched_kmers.index]) / enriched_kmers.shape[0]
+            kmers_in_partial_motifs = sum([int(any(overlaps(kmer, motif.seed, True) for motif in motifs)) for kmer in enriched_kmers.index]) / \
+                                      enriched_kmers.shape[0]
             recovered_motifs = sum([int(motif.seed in enriched_kmers.index) for motif in motifs]) / len(motifs)
-            recovered_partial_motifs = sum([int(any(overlaps(motif.seed, kmer) for kmer in enriched_kmers.index)) for motif in motifs]) / len(motifs)
+            recovered_partial_motifs = sum([int(any(overlaps(motif.seed, kmer, True) for kmer in enriched_kmers.index)) for motif in motifs]) / len(motifs)
         else:
             kmers_in_motifs, kmers_in_partial_motifs, recovered_motifs, recovered_partial_motifs = 0, 0, 0, 0
 
         kmer_counts_per_overlap = {f"overlap_{i}": 0 for i in range(k + 1)}
         for kmer in enriched_kmers.index:
-            overlap_length = max([get_overlap_length(kmer, motif.seed) for motif in motifs])
+            overlap_length = max([get_overlap_length(kmer, motif.seed,
+                                                     any(key != 0 and val > 0 for key, val in motif.instantiation._hamming_distance_probabilities.items()))
+                                  for motif in motifs])
             kmer_counts_per_overlap[f"overlap_{overlap_length}"] += 1
 
         return {**{"kmers_in_motifs": kmers_in_motifs, "kmers_in_partial_motifs": kmers_in_partial_motifs,
                    "recovered_partial_motifs": recovered_partial_motifs, "recovered_motifs": recovered_motifs}, **kmer_counts_per_overlap}
 
-    def split_to_train_test(self, dataset: SequenceDataset, path: Path) -> Tuple[SequenceDataset, SequenceDataset]:
-        train, test = DataSplitter.random_split(DataSplitterParams(dataset, split_count=1, training_percentage=0.7, paths=[path],
-                                                                   split_strategy=SplitType.RANDOM, label_config=self.label_configuration,
-                                                                   split_config=SplitConfig(split_strategy=SplitType.RANDOM, split_count=1,
-                                                                                            training_percentage=0.7)))
+    def make_test_dataset(self, path: Path, train_data_size: int) -> SequenceDataset:
+        test_dataset = self.simulate_data(path, ImplantingGroup(baseline=ImplantingUnit(0.5, []), modified=ImplantingUnit(0.5, []),
+                                                                seq_count=round(self.test_percentage * train_data_size), name='test'))
 
-        return train[0], test[0]
+        test_dataset = get_dataset_from_dataframe(test_dataset, path / 'test_dataset.tsv', self.col_mapping, self.meta_col_mapping)
+
+        return test_dataset
 
     def encode_with_kmers(self, train_dataset: SequenceDataset, test_dataset: SequenceDataset, path: Path) -> Tuple[SequenceDataset, SequenceDataset]:
 
@@ -172,74 +176,53 @@ class Experiment3:
                                                     sequence_type=SequenceType.AMINO_ACID.name)
 
         encoded_train = encoder.encode(train_dataset, EncoderParams(path, self.label_configuration, learn_model=True))
-        encoded_train.encoded_data.labels[self.signal_name] = [1 if val == "True" else 0 for val in encoded_train.encoded_data.labels[self.signal_name]]
+        encoded_train.encoded_data.labels[self.signal_name] = [1 if val == "True" else 0 for val in
+                                                               encoded_train.encoded_data.labels[self.signal_name]]
         encoded_test = encoder.encode(test_dataset, EncoderParams(path, self.label_configuration, learn_model=False))
         encoded_test.encoded_data.labels[self.signal_name] = [1 if val == "True" else 0 for val in encoded_test.encoded_data.labels[self.signal_name]]
 
         return encoded_train, encoded_test
 
-    def correct_encoded_for_batch(self, train_dataset: SequenceDataset, test_dataset: SequenceDataset, path: Path, correct: bool) \
-                                  -> Tuple[SequenceDataset, SequenceDataset]:
+    def correct_encoded_for_batch(self, train_dataset: SequenceDataset, path: Path, correct: bool) -> SequenceDataset:
 
         if correct:
             PathBuilder.build(path)
 
-            corrected_train, lin_reg_map = self._correct_encoded_dataset(train_dataset, {})
-            corrected_test, _ = self._correct_encoded_dataset(test_dataset, lin_reg_map)
+            corrected_train = self._correct_encoded_dataset(train_dataset)
+            self._report_correction_diff(train_dataset.encoded_data, corrected_train.encoded_data, path)
 
-            self._report_correction_diff(train_dataset.encoded_data, corrected_train.encoded_data, test_dataset.encoded_data,
-                                         corrected_test.encoded_data, path)
-
-            return corrected_train, corrected_test
+            return corrected_train
         else:
-            return train_dataset, test_dataset
+            return train_dataset
 
-    def _report_correction_diff(self, train_encoded: EncodedData, corrected_train_encoded: EncodedData, test_encoded: EncodedData,
-                                corrected_test_encoded: EncodedData, path: Path):
+    def _report_correction_diff(self, train_encoded: EncodedData, corrected_train_encoded: EncodedData, path: Path):
 
-        for baseline, corrected in [[train_encoded, corrected_train_encoded], [test_encoded, corrected_test_encoded]]:
+        correction_df = pd.DataFrame(train_encoded.examples, columns=[f"baseline_{feature}" for feature in train_encoded.feature_names])
+        correction_df[[f"corrected_{feature}" for feature in corrected_train_encoded.feature_names]] = corrected_train_encoded.examples
+        write_to_file(correction_df, path / f"train_corrected.tsv")
 
-            figure = go.Figure()
-
-            for feature_index, feature in enumerate(baseline.feature_names):
-
-                if random.uniform(0, 1) < self.p_correction_points:
-
-                    y = np.concatenate([baseline.examples[:, feature_index], corrected.examples[:, feature_index]], axis=0)
-                    x = [f"baseline_{feature}" for _ in range(baseline.examples.shape[0])] + \
-                        [f'corrected_{feature}' for _ in range(corrected.examples.shape[0])]
-
-                    figure.add_trace(go.Box(name=feature, x=x, y=y, opacity=0.7, offsetgroup=feature, marker={'opacity': 0.5},
-                                            legendgroup=feature))
-
-            correction_df = pd.DataFrame(baseline.examples, columns=[f"baseline_{feature}" for feature in baseline.feature_names])
-            correction_df[[f"corrected_{feature}" for feature in corrected.feature_names]] = corrected.examples
-            write_to_file(correction_df, path / f"{'train' if baseline == train_encoded else 'test'}_corrected.tsv")
-
-            file_path = path / f"subset_{'train' if baseline == train_encoded else 'test'}_corrected.html"
-            figure.write_html(str(file_path))
-
-    def _correct_encoded_dataset(self, dataset: SequenceDataset, lin_reg_map: Dict[str, LinearRegression] = None) -> Tuple[SequenceDataset, dict]:
+    def _correct_encoded_dataset(self, dataset: SequenceDataset) -> SequenceDataset:
         corrected_dataset = dataset.clone()
         meta_train_df = dataset.get_metadata([self.signal_name, 'batch'], return_df=True)
-        meta_train_df['signal'] = [1 if el == 'True' else 0 for el in meta_train_df['signal']]
+        meta_train_df[self.signal_name] = [1 if el == 'True' else 0 for el in meta_train_df['signal']]
         meta_train_df['batch'] = [1 if el == '1' else 0 for el in meta_train_df['batch']]
         for feature_index, feature in enumerate(dataset.encoded_data.feature_names):
             y = dataset.encoded_data.examples[:, feature_index]
-            if feature not in lin_reg_map:
-                lin_reg_map[feature] = LinearRegression(n_jobs=4)
-                lin_reg_map[feature].fit(meta_train_df.values, y)
-                logging.info(f"Correction model (lin reg) batch coefficient for feature {feature}: {lin_reg_map[feature].coef_[1]}")
+            lin_reg = LinearRegression(n_jobs=4)
+            lin_reg.fit(meta_train_df.values, y)
+            logging.info(f"Correction model (lin reg) batch coefficient for feature {feature}: {lin_reg.coef_[1]}")
             corrected_y = copy.deepcopy(y)
-            corrected_y[meta_train_df['batch'] == 1] = corrected_y[meta_train_df['batch'] == 1] - lin_reg_map[feature].coef_[1]
+            corrected_y[meta_train_df['batch'] == 1] = corrected_y[meta_train_df['batch'] == 1] - lin_reg.coef_[1]
             corrected_dataset.encoded_data.examples[:, feature_index] = corrected_y
-            assert not np.array_equal(dataset.encoded_data.examples[:, feature_index].flatten(), corrected_y.flatten())
 
-        return corrected_dataset, lin_reg_map
+        return corrected_dataset
 
     def train_log_reg(self, train_dataset: SequenceDataset) -> LogisticRegression:
         log_reg = LogisticRegression(penalty="l1", solver='saga', n_jobs=4, C=100)
         log_reg.fit(train_dataset.encoded_data.examples, train_dataset.encoded_data.labels[self.signal_name])
+
+        bacc = balanced_accuracy_score(train_dataset.encoded_data.labels[self.signal_name], log_reg.predict(train_dataset.encoded_data.examples))
+        logging.info(f"Training balanced accuracy: {bacc}")
 
         return log_reg
 

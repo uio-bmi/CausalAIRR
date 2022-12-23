@@ -47,7 +47,7 @@ def main_test_run():
 
     logging.basicConfig(level=logging.INFO)
 
-    experiment = Experiment3(config, 0.01)
+    experiment = Experiment3(config, 0.0001)
     experiment.run(path)
 
 
