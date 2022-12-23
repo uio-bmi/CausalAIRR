@@ -6,8 +6,8 @@ from immuneML.simulation.implants.Signal import Signal
 from immuneML.util.PathBuilder import PathBuilder
 from dagsim.base import Node, Selection, Graph
 
-from util.dataset_util import make_olga_repertoire, make_dataset, make_AIRR_dataset
-from util.implanting import make_repertoire_with_signal, make_repertoire_without_signal, make_exp_protocol_signal
+from causal_airr_scripts.dataset_util import make_olga_repertoire, make_dataset, make_AIRR_dataset
+from causal_airr_scripts.implanting import make_repertoire_with_signal, make_repertoire_without_signal, make_exp_protocol_signal
 
 
 def get_immune_state(p: float) -> bool:

@@ -1,11 +1,9 @@
-import datetime
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from immuneML.IO.dataset_import.OLGAImport import OLGAImport
 from immuneML.encodings.EncoderParams import EncoderParams
 from immuneML.encodings.kmer_frequency.KmerFrequencyEncoder import KmerFrequencyEncoder
 from immuneML.environment.Label import Label
@@ -16,7 +14,7 @@ from immuneML.reports.encoding_reports.FeatureValueBarplot import FeatureValueBa
 
 from .olga_util import gen_olga_sequences
 from .kmer_enrichment import get_kmer_presence_from_sequences
-from .dataset_util import setup_path
+from .dataset_util import setup_path, get_dataset_from_dataframe
 
 
 def gene_distribution_in_olga(sequences: pd.DataFrame, path: Path):
@@ -63,18 +61,6 @@ def run_distribution_report(sequences: pd.DataFrame, path: Path):
     dataset = encoder.encode(dataset, EncoderParams(result_path=path / 'encoded', label_config=None, learn_model=True, encode_labels=False))
     report = FeatureDistribution(dataset, path / 'report', name='kmer_frequency', )
     report.generate_report()
-
-
-def get_dataset_from_dataframe(sequences: pd.DataFrame, file_path: Path, col_mapping: dict = None, meta_col_mapping: dict = None):
-    col_mapping = {0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: 'status'} if col_mapping is None else col_mapping
-    meta_col_mapping = {'status': 'status'} if meta_col_mapping is None else meta_col_mapping
-    sequences.to_csv(file_path, sep='\t', index=False)
-    return OLGAImport.import_dataset({
-        'path': file_path, 'is_repertoire': False, 'import_illegal_characters': False, 'import_empty_nt_sequences': True,
-        'import_empty_aa_sequences': False, 'separator': '\t', 'region_type': 'IMGT_JUNCTION', 'columns_to_load': list(col_mapping.keys()),
-        'column_mapping': col_mapping, "metadata_column_mapping": meta_col_mapping,
-        'result_path': setup_path(file_path.parent / 'imported')
-    }, f'seq_dataset_{datetime.datetime.now()}')
 
 
 def combine_two_dataframes(baseline_seqs: pd.DataFrame, modified_seqs: pd.DataFrame) -> pd.DataFrame:

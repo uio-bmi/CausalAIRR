@@ -2,7 +2,7 @@ import copy
 
 import yaml
 
-from .SimConfig import SimConfig
+from causal_airr_scripts.experiment3.SimConfig import SimConfig
 
 
 def overlaps(word1, word2) -> bool:
@@ -38,11 +38,7 @@ def get_overlap_length(word1, word2) -> int:
 
 def write_config(config: SimConfig, path):
 
-    all_config = copy.deepcopy(vars(config))
-
-    all_config['signal'] = {'signal_id': all_config['signal'].id,
-                            'motifs': [motif.seed for motif in all_config['signal'].motifs],
-                            'sequence_positions': all_config['signal'].implanting_strategy.sequence_position_weights}
+    all_config = config.to_dict()
 
     with open(path / 'config.yaml', 'w') as file:
         yaml.dump(all_config, file)

@@ -1,152 +1,65 @@
-import itertools
+import argparse
 import logging
 from datetime import datetime
+from itertools import product
 from pathlib import Path
 
-import pandas as pd
-from immuneML.simulation.implants.Signal import Signal
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from statsmodels.stats.multitest import fdrcorrection
-
-from util.SimConfig import SimConfig, make_signal, ImplantingConfig, ImplantingGroup, ImplantingUnit
-from util.dataset_util import setup_path, write_to_file
-from util.implanting import implant_in_sequences
-from util.kmer_enrichment import find_enriched_kmers, make_contingency_table, compute_p_value
-from util.olga_util import gen_olga_sequences
-from util.util import overlaps, get_overlap_length, write_config
+from causal_airr_scripts.dataset_util import setup_path
+from causal_airr_scripts.experiment3.SimConfig import SimConfig, make_signal, ImplantingConfig, ImplantingGroup, ImplantingUnit
+from causal_airr_scripts.experiment3.experiment3 import Experiment3
+from causal_airr_scripts.util import write_config
 
 
-def assess_performance(motifs, enriched_kmers, k: int):
-    if enriched_kmers.shape[0] > 0:
-        kmers_in_motifs = sum([int(kmer in [motif.seed for motif in motifs]) for kmer in enriched_kmers.index]) / enriched_kmers.shape[0]
-        kmers_in_partial_motifs = sum([int(any(overlaps(kmer, motif.seed) for motif in motifs)) for kmer in enriched_kmers.index]) / enriched_kmers.shape[
-            0]
-        recovered_motifs = sum([int(motif.seed in enriched_kmers.index) for motif in motifs]) / len(motifs)
-        recovered_partial_motifs = sum([int(any(overlaps(motif.seed, kmer) for kmer in enriched_kmers.index)) for motif in motifs]) / len(motifs)
-    else:
-        kmers_in_motifs, kmers_in_partial_motifs, recovered_motifs, recovered_partial_motifs = 0, 0, 0, 0
+def main(namespace):
+    for p_noise, sequence_count in product([0.1, 0.499], [1000, 10000]):
+        config = SimConfig(k=3, repetitions=10, p_noise=p_noise, olga_model_name='humanTRB',
+                           signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5},
+                                              hamming_dist_weights={1: 0.5, 0: 0.5},
+                                              position_weights={1: 1.}),
+                           fdrs=[0.05], sequence_encoding='continuous_kmer',
+                           implanting_config=ImplantingConfig(
+                               control=ImplantingGroup(baseline=ImplantingUnit(0.5, []),
+                                                       modified=ImplantingUnit(0.5, []), name='control', seq_count=sequence_count),
+                               batch=ImplantingGroup(baseline=ImplantingUnit(0.9, []), name='batch', seq_count=sequence_count,
+                                                     modified=ImplantingUnit(0.1, ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"]))))
 
-    kmer_counts_per_overlap = {f"overlap_{i}": 0 for i in range(k + 1)}
-    for kmer in enriched_kmers.index:
-        overlap_length = max([get_overlap_length(kmer, motif.seed) for motif in motifs])
-        kmer_counts_per_overlap[f"overlap_{overlap_length}"] += 1
+        path = setup_path(namespace.result_path / f"experiment3_results/AIRR_classification_noise_{p_noise}_seqcount_{sequence_count}_{datetime.now()}")
+        write_config(config, path)
 
-    return {**{"kmers_in_motifs": kmers_in_motifs, "kmers_in_partial_motifs": kmers_in_partial_motifs,
-               "recovered_partial_motifs": recovered_partial_motifs, "recovered_motifs": recovered_motifs}, **kmer_counts_per_overlap}
-
-
-def experiment3_analysis(path, implanting_group: ImplantingGroup, repetition_index: int, sim_config: SimConfig):
-
-    exp_path = setup_path(path / f"{implanting_group.name}_{repetition_index}")
-
-    sequences = generate_sequences(sim_config.olga_model_name, implanting_group, sim_config.signal, sim_config.p_noise, exp_path)
-
-    contingency_table = make_contingency_table(sequences, sim_config.k)
-    contingency_with_p_value = compute_p_value(contingency_table)
-    write_to_file(contingency_with_p_value, exp_path / f'all_{sim_config.k}mers_with_p_value.tsv')
-
-    results = []
-    motifs = sim_config.signal.motifs
-
-    for fdr in sim_config.fdrs:
-        q_values = fdrcorrection(contingency_with_p_value.p_value)[1]
-        contingency_with_p_value['q_value'] = q_values
-        enriched_kmers = find_enriched_kmers(contingency_with_p_value, fdr) # TODO replace this with rejected list from fdrcorrection func
-
-        write_to_file(enriched_kmers, exp_path / f"enriched_{sim_config.k}mers_{fdr}.tsv")
-
-        metrics = assess_performance(motifs, enriched_kmers, sim_config.k)
-        results.append({**{"k": sim_config.k, "fdr": fdr, "group": implanting_group.name,
-                           "repetition": repetition_index}, **metrics})
-        logging.info(f"Finished for FDR={fdr}, group={implanting_group.name}, repetition={repetition_index}.")
-
-    return results
+        experiment = Experiment3(config, 0.01)
+        experiment.run(path)
 
 
-def generate_sequences(olga_model_name: str, impl_group: ImplantingGroup, signal: Signal, p_noise: float, path: Path) \
-                       -> pd.DataFrame:
-
-    seq_path = path / "sequences.tsv"
-    gen_sequences_for_implanting_unit(impl_group.baseline, olga_model_name, impl_group.seq_count, signal, 0, p_noise, seq_path, impl_group.name)
-    gen_sequences_for_implanting_unit(impl_group.modified, olga_model_name, impl_group.seq_count, signal, 1, p_noise, seq_path, impl_group.name)
-
-    return pd.read_csv(seq_path, sep="\t")
-
-
-def gen_sequences_for_implanting_unit(implanting_unit: ImplantingUnit, olga_model_name: str, seq_count: int, signal: Signal, batch_name: int,
-                                      p_noise: float, seq_path: Path, group_name: str):
-
-    sequences = gen_olga_sequences(olga_model_name, implanting_unit.skip_genes, seq_count)
-    sequences = implant_in_sequences(sequences, signal, implanting_unit.implanting_prob, p_noise)
-    sequences = add_column(sequences, 'batch', batch_name)
-    sequences = add_column(sequences, 'group', group_name)
-    write_to_file(sequences, seq_path)
-
-
-def add_column(sequences: pd.DataFrame, col_name: str, col_val):
-    sequences[col_name] = col_val
-    return sequences
-
-
-def plot_proportion_discovered(df: pd.DataFrame, path: Path, k: int):
-
-    fig = make_subplots(1, df['fdr'].unique().shape[0],
-                        subplot_titles=[f"FDR: {fdr}" for fdr in df['fdr'].unique()],
-                        x_title="overlap length", y_title="number of enriched k-mers", horizontal_spacing=0.05)
-
-    for index, fdr in enumerate(df['fdr'].unique()):
-        tmp_df = df[df.fdr == fdr]
-
-        for gene_index, group in enumerate(tmp_df['group'].unique()):
-            tmp_y = tmp_df[tmp_df['group'] == group][[f'overlap_{overlap_length}' for overlap_length in range(k + 1)]]
-            y = tmp_y.values.flatten('F')
-            x = list(itertools.chain.from_iterable([[i for _ in range(tmp_y.shape[0])] for i in range(k + 1)]))
-
-            fig.add_trace(go.Box(name=str(group), x=x, y=y, opacity=0.7, offsetgroup=group, marker={'opacity': 0.5},
-                                 legendgroup=group, showlegend=index == 0, marker_color='#636EFA' if gene_index else '#EF553B'),
-                          1, index + 1)
-
-    fig.update_layout(boxmode='group', template="plotly_white", boxgap=0.2, boxgroupgap=0.1,
-                      legend={'orientation': 'h', 'yanchor': 'bottom', 'xanchor': 'right', 'x': 1, 'y': 1.08},
-                      title=f"Enriched k-mer overlap with true motifs")
-    fig.write_html(path / f"summary_boxplot.html")
-
-
-def do_experiment3_control(sim_config: SimConfig, path: Path, repetition: int):
-    return experiment3_analysis(path, sim_config.implanting_config.control, repetition, sim_config)
-
-
-def do_experiment3_batches(sim_config: SimConfig, path: Path, repetition: int):
-    return experiment3_analysis(path, sim_config.implanting_config.batch, repetition, sim_config)
-
-
-def main(config: SimConfig):
-    path = setup_path(f"experiment3/AIRR_{datetime.now()}")
-    write_config(config, path)
-
-    results = []
-
-    for repetition in range(1, config.repetitions + 1):
-        results += do_experiment3_control(config, setup_path(path / f"control_replication_{repetition}"), repetition)
-        results += do_experiment3_batches(config, setup_path(path / f"batches_replication_{repetition}"), repetition)
-
-    results = pd.DataFrame(results)
-    write_to_file(results, path / "summary.tsv")
-    plot_proportion_discovered(results, path, config.k)
-
-
-if __name__ == "__main__":
-
-    config = SimConfig(k=3, repetitions=10, p_noise=0.49, olga_model_name='humanTRB',
-                       signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5}),
-                       fdrs=[0.05, 0.01],
+def main_test_run():
+    config = SimConfig(k=3, repetitions=3, p_noise=0.1, olga_model_name='humanTRB',
+                       signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5},
+                                          hamming_dist_weights={0: 0.5, 1: 0.5},
+                                          position_weights={1: 1.}),
+                       fdrs=[0.05], sequence_encoding='continuous_kmer',
                        implanting_config=ImplantingConfig(
                            control=ImplantingGroup(baseline=ImplantingUnit(0.5, []),
-                                                   modified=ImplantingUnit(0.5, []), name='control', seq_count=10000),
-                           batch=ImplantingGroup(baseline=ImplantingUnit(0.9, []), name='batch', seq_count=10000,
+                                                   modified=ImplantingUnit(0.5, []), name='control', seq_count=100),
+                           batch=ImplantingGroup(baseline=ImplantingUnit(0.9, []), name='batch', seq_count=100,
                                                  modified=ImplantingUnit(0.1, ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"]))))
+
+    path = setup_path(f"./experiment3_results/AIRR_classification_{datetime.now()}")
+    write_config(config, path)
 
     logging.basicConfig(level=logging.INFO)
 
-    main(config)
+    experiment = Experiment3(config, 0.01)
+    experiment.run(path)
+
+
+def prepare_namespace():
+    parser = argparse.ArgumentParser(description="CausalAIRR experiment 3")
+    parser.add_argument("result_path", help="Output directory path.")
+
+    namespace = parser.parse_args()
+    namespace.result_path = Path(namespace.result_path)
+    return namespace
+
+
+if __name__ == "__main__":
+    namespace = prepare_namespace()
+    main(namespace)

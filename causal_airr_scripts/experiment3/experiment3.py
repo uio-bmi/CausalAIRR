@@ -1,11 +1,13 @@
 import copy
+import logging
 import random
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Dict
 
 import numpy as np
 import pandas as pd
 import yaml
+import plotly.express as px
 from immuneML.analysis.data_manipulation.NormalizationType import NormalizationType
 from immuneML.data_model.dataset.SequenceDataset import SequenceDataset
 from immuneML.data_model.encoded_data.EncodedData import EncodedData
@@ -25,12 +27,12 @@ from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_sc
 from statsmodels.stats.multitest import fdrcorrection
 import plotly.graph_objects as go
 
-from AIRR_experiment_3 import generate_sequences, assess_performance
-from util.SimConfig import SimConfig
-from util.dataset_util import write_to_file
-from util.experiment3.exp_summary import make_summary
-from util.exploration import get_dataset_from_dataframe
-from util.kmer_enrichment import make_contingency_table, compute_p_value
+from causal_airr_scripts.experiment3.sequence_generation import generate_sequences
+from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingGroup
+from causal_airr_scripts.experiment3.exp_summary_plots import make_summary, plot_enriched_kmers, merge_dfs, plot_log_reg_coefficients
+from causal_airr_scripts.dataset_util import get_dataset_from_dataframe, write_to_file
+from causal_airr_scripts.kmer_enrichment import make_contingency_table, compute_p_value
+from causal_airr_scripts.util import overlaps, get_overlap_length
 
 
 class Experiment3:
@@ -49,45 +51,79 @@ class Experiment3:
 
     def run(self, path: Path):
 
+        self.run_for_impl_setup(PathBuilder.build(path / 'control'), self.sim_config.implanting_config.control, correct=False)
+
         for correct in [True, False]:
-            setting_path = PathBuilder.build(path / f"{'with_correction' if correct else 'no_correction'}")
-            all_metrics = []
-            for repetition in range(self.sim_config.repetitions):
-                metrics = self.run_one_repetition(PathBuilder.build(setting_path / f'repetition_{repetition+1}'), correct)
-                all_metrics.append({**metrics, **{'repetition': repetition + 1}})
+            self.run_for_impl_setup(PathBuilder.build(path / 'batch'), self.sim_config.implanting_config.batch, correct)
 
-            write_to_file(pd.DataFrame(all_metrics), setting_path / 'metrics.tsv')
+        self.make_reports(path)
 
-        make_summary(path / "with_correction/metrics.tsv", path / "no_correction/metrics.tsv", path)
+    def make_reports(self, path: Path):
+        make_summary(path / "batch/with_correction/metrics.tsv", path / "batch/no_correction/metrics.tsv", path / "control/no_correction/metrics.tsv",
+                     path)
 
-    def run_one_repetition(self, path: Path, correct: bool) -> dict:
-        dataset = self.simulate_data(PathBuilder.build(path / 'dataset'))
+        enriched_kmer_df = self._make_enriched_kmer_summary_df(path)
+        plot_enriched_kmers(path, enriched_kmer_df, self.sim_config.k)
 
-        self.report_enriched_kmers(dataset, PathBuilder.build(path / f'enriched_{self.sim_config.k}-mers'))
+    def _make_enriched_kmer_summary_df(self, path: Path) -> pd.DataFrame:
+        batch_corrected_files = [path / f'batch/with_correction/repetition_{rep}/enriched_k-mers/metrics.tsv'
+                                  for rep in range(1, self.sim_config.repetitions + 1)]
+
+        batch_not_corrected_files = [path / f'batch/no_correction/repetition_{rep}/enriched_k-mers/metrics.tsv'
+                                     for rep in range(1, self.sim_config.repetitions + 1)]
+
+        control_files = [path / f'control/no_correction/repetition_{rep}/enriched_k-mers/metrics.tsv'
+                         for rep in range(1, self.sim_config.repetitions + 1)]
+
+        batch_corrected = merge_dfs(batch_corrected_files, 'repetition', 'batch_corrected')
+        batch_baseline = merge_dfs(batch_not_corrected_files, 'repetition', 'batch_baseline')
+        control = merge_dfs(control_files, 'repetition', 'control')
+
+        return pd.concat([batch_corrected, batch_baseline, control], axis=0)
+
+    def run_for_impl_setup(self, path: Path, impl_group: ImplantingGroup, correct: bool):
+        setting_path = PathBuilder.build(path / f"{'with_correction' if correct else 'no_correction'}")
+        all_metrics = []
+
+        logging.info(f"Starting run for implanting_group: {impl_group.to_dict()}, correct={correct}")
+
+        for repetition in range(self.sim_config.repetitions):
+            metrics = self.run_one_repetition(PathBuilder.build(setting_path / f'repetition_{repetition + 1}'), impl_group, correct)
+            all_metrics.append({**metrics, **{'repetition': repetition + 1}})
+
+        write_to_file(pd.DataFrame(all_metrics), setting_path / 'metrics.tsv')
+
+    def run_one_repetition(self, path: Path, impl_group: ImplantingGroup, correct: bool) -> dict:
+        dataset = self.simulate_data(PathBuilder.build(path / 'dataset'), impl_group)
+
+        self.report_enriched_kmers(dataset, PathBuilder.build(path / f'enriched_k-mers'))
 
         dataset = get_dataset_from_dataframe(dataset, path / 'iml_dataset.tsv',
                                              col_mapping={0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: self.signal_name, 4: 'batch'},
                                              meta_col_mapping={self.signal_name: self.signal_name, 'batch': 'batch'})
 
         train_dataset, test_dataset = self.split_to_train_test(dataset, PathBuilder.build(path / 'split_datasets'))
-        train_dataset, test_dataset = self.encode_with_kmers(train_dataset, test_dataset, PathBuilder.build(path / "encoding"))
-        train_dataset, test_dataset = self.correct_encoded_for_batch(train_dataset, test_dataset, PathBuilder.build(path / 'correction'), correct)
+        train_dataset, test_dataset = self.encode_with_kmers(train_dataset, test_dataset, path / 'encoding')
+        train_dataset, test_dataset = self.correct_encoded_for_batch(train_dataset, test_dataset, path / 'correction', correct)
         log_reg = self.train_log_reg(train_dataset)
 
         metrics = self.assess_log_reg(log_reg, test_dataset, PathBuilder.build(path / 'assessment'))
         return metrics
 
-    def simulate_data(self, path: Path) -> pd.DataFrame:
-        if self.sim_config.implanting_config.control is not None:
-            raise NotImplementedError
+    def simulate_data(self, path: Path, impl_group: ImplantingGroup) -> pd.DataFrame:
+        df = generate_sequences(self.sim_config.olga_model_name, impl_group, self.sim_config.signal, self.sim_config.p_noise, path)
+        logging.info(f"Generated {df.shape[0]} sequences.")
+        logging.info(f"Summary:\n\tBatch 0:\n\t\tsignal=True: {df[(df['batch'] == 0) & (df['signal'] == 1)].shape[0]} sequences\n"
+                     f"\t\tsignal=False: {df[(df['batch'] == 0) & (df['signal'] == 0)].shape[0]} sequences\n"
+                     f"\tBatch 1:\n\t\tsignal=True: {df[(df['batch'] == 1) & (df['signal'] == 1)].shape[0]} sequences\n"
+                     f"\t\tsignal=False: {df[(df['batch'] == 1) & (df['signal'] == 0)].shape[0]} sequences\n")
 
-        return generate_sequences(self.sim_config.olga_model_name, self.sim_config.implanting_config.batch, self.sim_config.signal,
-                                  self.sim_config.p_noise, path)
+        return df
 
     def report_enriched_kmers(self, dataset: pd.DataFrame, path: Path, repetition_index: int = 1):
         contingency_table = make_contingency_table(dataset, self.sim_config.k)
         contingency_with_p_value = compute_p_value(contingency_table)
-        write_to_file(contingency_with_p_value, path / f'all_{self.sim_config.k}mers_with_p_value.tsv')
+        write_to_file(contingency_with_p_value, path / f'all_kmers_with_p_value.tsv')
 
         motifs = self.sim_config.signal.motifs
         results = []
@@ -96,12 +132,29 @@ class Experiment3:
             kmer_selection, contingency_with_p_value['q_value'] = fdrcorrection(contingency_with_p_value.p_value, alpha=fdr)
             enriched_kmers = contingency_with_p_value[kmer_selection]
 
-            write_to_file(enriched_kmers, path / f"enriched_{self.sim_config.k}mers_{fdr}.tsv")
+            write_to_file(enriched_kmers, path / f"enriched_kmers_{fdr}.tsv")
 
-            metrics = assess_performance(motifs, enriched_kmers, self.sim_config.k)
+            metrics = self._assess_kmer_discovery(motifs, enriched_kmers, self.sim_config.k)
             results.append({**metrics, **{'FDR': fdr}})
 
         write_to_file(pd.DataFrame(results), path / 'metrics.tsv')
+
+    def _assess_kmer_discovery(self, motifs: list, enriched_kmers, k: int):
+        if enriched_kmers.shape[0] > 0:
+            kmers_in_motifs = sum([int(kmer in [motif.seed for motif in motifs]) for kmer in enriched_kmers.index]) / enriched_kmers.shape[0]
+            kmers_in_partial_motifs = sum([int(any(overlaps(kmer, motif.seed) for motif in motifs)) for kmer in enriched_kmers.index]) / enriched_kmers.shape[0]
+            recovered_motifs = sum([int(motif.seed in enriched_kmers.index) for motif in motifs]) / len(motifs)
+            recovered_partial_motifs = sum([int(any(overlaps(motif.seed, kmer) for kmer in enriched_kmers.index)) for motif in motifs]) / len(motifs)
+        else:
+            kmers_in_motifs, kmers_in_partial_motifs, recovered_motifs, recovered_partial_motifs = 0, 0, 0, 0
+
+        kmer_counts_per_overlap = {f"overlap_{i}": 0 for i in range(k + 1)}
+        for kmer in enriched_kmers.index:
+            overlap_length = max([get_overlap_length(kmer, motif.seed) for motif in motifs])
+            kmer_counts_per_overlap[f"overlap_{overlap_length}"] += 1
+
+        return {**{"kmers_in_motifs": kmers_in_motifs, "kmers_in_partial_motifs": kmers_in_partial_motifs,
+                   "recovered_partial_motifs": recovered_partial_motifs, "recovered_motifs": recovered_motifs}, **kmer_counts_per_overlap}
 
     def split_to_train_test(self, dataset: SequenceDataset, path: Path) -> Tuple[SequenceDataset, SequenceDataset]:
         train, test = DataSplitter.random_split(DataSplitterParams(dataset, split_count=1, training_percentage=0.7, paths=[path],
@@ -123,16 +176,16 @@ class Experiment3:
         encoded_test = encoder.encode(test_dataset, EncoderParams(path, self.label_configuration, learn_model=False))
         encoded_test.encoded_data.labels[self.signal_name] = [1 if val == "True" else 0 for val in encoded_test.encoded_data.labels[self.signal_name]]
 
-        print(f"Finished encoding...")
-
         return encoded_train, encoded_test
 
     def correct_encoded_for_batch(self, train_dataset: SequenceDataset, test_dataset: SequenceDataset, path: Path, correct: bool) \
                                   -> Tuple[SequenceDataset, SequenceDataset]:
 
         if correct:
-            corrected_train, lin_reg = self._correct_encoded_dataset(train_dataset)
-            corrected_test, _ = self._correct_encoded_dataset(test_dataset, lin_reg)
+            PathBuilder.build(path)
+
+            corrected_train, lin_reg_map = self._correct_encoded_dataset(train_dataset, {})
+            corrected_test, _ = self._correct_encoded_dataset(test_dataset, lin_reg_map)
 
             self._report_correction_diff(train_dataset.encoded_data, corrected_train.encoded_data, test_dataset.encoded_data,
                                          corrected_test.encoded_data, path)
@@ -166,21 +219,23 @@ class Experiment3:
             file_path = path / f"subset_{'train' if baseline == train_encoded else 'test'}_corrected.html"
             figure.write_html(str(file_path))
 
-    def _correct_encoded_dataset(self, dataset: SequenceDataset, lin_reg: LinearRegression = None) -> Tuple[SequenceDataset, LinearRegression]:
+    def _correct_encoded_dataset(self, dataset: SequenceDataset, lin_reg_map: Dict[str, LinearRegression] = None) -> Tuple[SequenceDataset, dict]:
         corrected_dataset = dataset.clone()
         meta_train_df = dataset.get_metadata([self.signal_name, 'batch'], return_df=True)
         meta_train_df['signal'] = [1 if el == 'True' else 0 for el in meta_train_df['signal']]
         meta_train_df['batch'] = [1 if el == '1' else 0 for el in meta_train_df['batch']]
         for feature_index, feature in enumerate(dataset.encoded_data.feature_names):
             y = dataset.encoded_data.examples[:, feature_index]
-            if lin_reg is None:
-                lin_reg = LinearRegression(n_jobs=4)
-                lin_reg.fit(meta_train_df.values, y)
+            if feature not in lin_reg_map:
+                lin_reg_map[feature] = LinearRegression(n_jobs=4)
+                lin_reg_map[feature].fit(meta_train_df.values, y)
+                logging.info(f"Correction model (lin reg) batch coefficient for feature {feature}: {lin_reg_map[feature].coef_[1]}")
             corrected_y = copy.deepcopy(y)
-            corrected_y[meta_train_df['batch'] == 1] = corrected_y[meta_train_df['batch'] == 1] - lin_reg.coef_[1]
+            corrected_y[meta_train_df['batch'] == 1] = corrected_y[meta_train_df['batch'] == 1] - lin_reg_map[feature].coef_[1]
             corrected_dataset.encoded_data.examples[:, feature_index] = corrected_y
+            assert not np.array_equal(dataset.encoded_data.examples[:, feature_index].flatten(), corrected_y.flatten())
 
-        return corrected_dataset, lin_reg
+        return corrected_dataset, lin_reg_map
 
     def train_log_reg(self, train_dataset: SequenceDataset) -> LogisticRegression:
         log_reg = LogisticRegression(penalty="l1", solver='saga', n_jobs=4, C=100)
@@ -200,11 +255,10 @@ class Experiment3:
             'specificity': tn / (tn + fp),
             'sensitivity': recall_score(true_y, y_pred, labels=labels),
             'balanced_accuracy': balanced_accuracy_score(true_y, y_pred),
-            'auc': roc_auc_score(true_y, y_pred, labels=labels)
         }
 
         self._save_metrics(metrics, path)
-        print(metrics)
+        plot_log_reg_coefficients(logistic_regression, test_dataset.encoded_data.feature_names, 20, self.sim_config.signal.motifs, path)
 
         return metrics
 
