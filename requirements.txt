@@ -1,4 +1,4 @@
-setuptools==50.3.2
+setuptools
 olga>=1.2.4
 jupyter>=1.0
 git+https://github.com/uio-bmi/immuneML.git@master
