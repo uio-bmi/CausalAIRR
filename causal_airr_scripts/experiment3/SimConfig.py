@@ -21,35 +21,42 @@ class ImplantingGroup:
     baseline: ImplantingUnit
     modified: ImplantingUnit
     seq_count: int
-    name: str
 
     def to_dict(self) -> dict:
         self_dict = copy.deepcopy(vars(self))
-        self_dict['baseline'] = vars(self.baseline) if self.baseline is not None else {}
-        self_dict['modified'] = vars(self.modified) if self.modified is not None else {}
+        self_dict['baseline'] = copy.deepcopy(vars(self.baseline)) if self.baseline is not None else {}
+        self_dict['modified'] = copy.deepcopy(vars(self.modified)) if self.modified is not None else {}
         return self_dict
+
+
+@dataclass
+class ImplantingSetting:
+    train: ImplantingGroup
+    test: ImplantingGroup
+    name: str
+
+    def to_dict(self) -> dict:
+        return {'name': self.name, 'train': self.train.to_dict() if self.train is not None else {},
+                'test': self.test.to_dict() if self.test is not None else {}}
 
     @classmethod
     def from_dict(cls, group: dict):
-        return ImplantingGroup(**{**group, **{'baseline': ImplantingUnit(**group['baseline']),
-                                              'modified': ImplantingUnit(**group['modified'])}})
+        return ImplantingSetting(**{**group, **{'baseline': ImplantingUnit(**group['baseline']),
+                                                'modified': ImplantingUnit(**group['modified'])}})
 
 
 @dataclass
 class ImplantingConfig:
-    control: ImplantingGroup
-    batch: ImplantingGroup
+    control: ImplantingSetting
+    batch: ImplantingSetting
 
     def to_dict(self) -> dict:
-        return {
-            'control': self.control.to_dict(),
-            'batch': self.batch.to_dict()
-        }
+        return {'control': self.control.to_dict(), 'batch': self.batch.to_dict()}
 
     @classmethod
     def from_dict(cls, config: dict):
-        return ImplantingConfig(control=ImplantingGroup.from_dict(config['control']),
-                                batch=ImplantingGroup.from_dict(config['batch']))
+        return ImplantingConfig(control=ImplantingSetting.from_dict(config['control']),
+                                batch=ImplantingSetting.from_dict(config['batch']))
 
 
 @dataclass
@@ -59,7 +66,6 @@ class SimConfig:
     p_noise: float
     olga_model_name: str
     signal: Signal
-    fdrs: List[float]
     implanting_config: ImplantingConfig
     sequence_encoding: str = "continuous_kmer"
 

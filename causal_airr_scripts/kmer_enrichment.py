@@ -3,7 +3,9 @@ import itertools
 import fisher
 import numpy as np
 import pandas as pd
+from immuneML.data_model.dataset.SequenceDataset import SequenceDataset
 from immuneML.util.KmerHelper import KmerHelper
+from sklearn.linear_model import LogisticRegression
 
 
 def compute_contingency_row(kmers_per_sequence, sequences, kmer):
@@ -26,10 +28,20 @@ def compute_contingency_values(kmers_per_sequence, sequences):
     return contingency_table
 
 
-def make_contingency_table(sequences: pd.DataFrame, k: int) -> pd.DataFrame:
-    kmers_per_sequence = get_kmer_presence_from_sequences(sequences, k)
+def make_contingency_table(sequences, k: int, correct: bool = False) -> pd.DataFrame:
+    if isinstance(sequences, SequenceDataset):
+        seq_df = pd.DataFrame({"sequence_aa": [seq.amino_acid_sequence for seq in sequences.get_data()],
+                               "signal": [seq.metadata.custom_params['signal'] == 'True' for seq in sequences.get_data()],
+                               "batch": [seq.metadata.custom_params['batch'] == 'True' for seq in sequences.get_data()]})
+    else:
+        seq_df = sequences
 
-    contingency_table = compute_contingency_values(kmers_per_sequence, sequences)
+    kmers_per_sequence = get_kmer_presence_from_sequences(seq_df, k)
+
+    if correct:
+        contingency_table_df = correct_kmers_per_sequence(kmers_per_sequence, sequences)
+
+    contingency_table = compute_contingency_values(kmers_per_sequence, seq_df)
     contingency_table_df = pd.DataFrame(contingency_table, index=list(kmers_per_sequence.columns),
                                         columns=['present_in_positive', 'present_in_negative', 'absent_in_positive', 'absent_in_negative'])
 
@@ -37,6 +49,11 @@ def make_contingency_table(sequences: pd.DataFrame, k: int) -> pd.DataFrame:
 
     return contingency_table_df
 
+
+def correct_kmers_per_sequence(kmers_per_seqs: pd.DataFrame, sequences: pd.DataFrame):
+    for row_index, row in contingency_df.iterrows():
+        log_reg = LogisticRegression(n_jobs=4)
+        log_reg.fit()
 
 def find_enriched_kmers(contingency_table: pd.DataFrame, fdr: float):
     relevant_kmers = contingency_table[contingency_table['q_value'] < fdr]
@@ -51,7 +68,7 @@ def compute_p_value(contingency_table: pd.DataFrame):
     return contingency_table
 
 
-def get_kmer_presence_from_sequences(sequences: pd.DataFrame, k: int):
+def get_kmer_presence_from_sequences(sequences: pd.DataFrame, k: int) -> pd.DataFrame:
     kmers = [KmerHelper.create_kmers_from_string(seq, k) for seq in sequences['sequence_aa']]
     unique_kmers = list(set(itertools.chain.from_iterable(kmers)))
     kmer_per_sequence = pd.DataFrame(data=np.zeros((sequences.shape[0], len(unique_kmers)), dtype=int), columns=unique_kmers)

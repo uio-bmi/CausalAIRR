@@ -37,28 +37,26 @@ def make_summary(corrected_path: Path, not_corrected_path: Path, control_path: P
 
 
 def plot_enriched_kmers(path: Path, df: pd.DataFrame, k: int):
-    for fdr in df['FDR'].unique():
 
-        fig = make_subplots(1, k+1, subplot_titles=[f"Motif overlap {overlap}" for overlap in range(k+1)],
-                            y_title="number of enriched k-mers", horizontal_spacing=0.05, shared_yaxes=True)
+    fig = make_subplots(1, k+1, subplot_titles=[f"Motif overlap {overlap}" for overlap in range(k+1)],
+                        y_title="number of enriched k-mers", horizontal_spacing=0.05, shared_yaxes=True)
 
-        tmp_df = df[df['FDR'] == fdr]
-        write_to_file(tmp_df, path / f'summary_enriched_kmers_{fdr}.tsv')
+    write_to_file(df, path / f'summary_enriched_kmers.tsv')
 
-        for overlap_length in range(k + 1):
-            for group_index, group in enumerate(sorted(tmp_df['group'].unique())):
-                y = tmp_df[tmp_df['group'] == group][f"overlap_{overlap_length}"]
+    for overlap_length in range(k + 1):
+        for setting_index, setting in enumerate(sorted(df['setting'].unique())):
+            y = df[df['setting'] == setting][f"overlap_{overlap_length}"]
 
-                fig.add_trace(go.Box(name=str(group), y=y, opacity=0.7, marker={'opacity': 0.5}, boxpoints='all', jitter=0.3, pointpos=-1.8,
-                                     legendgroup=group, showlegend=overlap_length == 0, marker_color=px.colors.sequential.Aggrnyl[group_index]),
-                              col=overlap_length + 1, row=1)
+            fig.add_trace(go.Box(name=str(setting), y=y, opacity=0.7, marker={'opacity': 0.5}, boxpoints='all', jitter=0.3, pointpos=-1.8,
+                                 legendgroup=setting, showlegend=overlap_length == 0, marker_color=px.colors.sequential.Aggrnyl[setting_index]),
+                          col=overlap_length + 1, row=1)
 
-        fig.update_layout(template="plotly_white", legend={'orientation': 'h', 'yanchor': 'bottom', 'xanchor': 'right', 'x': 1, 'y': 1.08},
-                          title=f"Enriched k-mer overlap with true motifs (FDR={fdr})")
-        fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
-        fig.update_yaxes(showline=True, linewidth=1, linecolor='black')
+    fig.update_layout(template="plotly_white", legend={'orientation': 'h', 'yanchor': 'bottom', 'xanchor': 'right', 'x': 1, 'y': 1.08},
+                      title=f"Enriched k-mer overlap with true motifs")
+    fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=1, linecolor='black')
 
-        fig.write_html(path / f"summary_enriched_kmers_{fdr}.html")
+    fig.write_html(path / f"summary_enriched_kmers.html")
 
 
 def plot_log_reg_coefficients(log_reg: LogisticRegression, feature_names: list, top_n: int, motifs: List[Motif], path: Path):
@@ -71,18 +69,14 @@ def plot_log_reg_coefficients(log_reg: LogisticRegression, feature_names: list, 
                                                    any(key != 0 and val > 0 for key, val in motif.instantiation._hamming_distance_probabilities.items()))
                                 for motif in motifs]) for feature in df['feature_name']]
 
-    fig = go.Figure()
-    for overlap in sorted(df['motif_overlap'].unique()):
-        selected_df = df[df['motif_overlap'] == overlap]
-        fig.add_trace(go.Bar(x=selected_df['feature_name'], y=selected_df['coefficient'], marker_color=px.colors.sequential.Aggrnyl[overlap],
-                             name=f'overlap_{overlap}'))
+    fig = px.bar(df, x='feature_name', y='coefficient', color='motif_overlap', color_continuous_scale=px.colors.sequential.Aggrnyl)
     fig.update_layout(template='plotly_white', title=f'Logistic regression top {top_n} coefficients')
     fig.write_html(path / f'top_{top_n}_coefficients.html')
 
 
-def merge_dfs(files, index_name, group_name) -> pd.DataFrame:
+def merge_dfs(files, index_name, setting_name) -> pd.DataFrame:
     df = pd.concat([pd.read_csv(file, sep='\t') for file in files], axis=0)
     df.reset_index(inplace=True)
     df.columns.values[0] = index_name
-    df['group'] = group_name
+    df['setting'] = setting_name
     return df
