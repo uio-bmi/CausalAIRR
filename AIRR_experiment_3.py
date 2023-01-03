@@ -14,7 +14,7 @@ def main(namespace):
 
     test_set_percentage = 0.3
 
-    for p_noise, sequence_count in product([0.1, 0.4, 0.45, 0.49], [500, 2500]):
+    for p_noise, sequence_count in product([0.1, 0.4, 0.45, 0.49], [1000, 5000]):
 
         test_set_size = round(test_set_percentage * sequence_count)
 
