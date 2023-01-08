@@ -67,6 +67,7 @@ class SimConfig:
     olga_model_name: str
     signal: Signal
     implanting_config: ImplantingConfig
+    batch_corrections: list
     sequence_encoding: str = "continuous_kmer"
 
     def to_dict(self) -> dict:

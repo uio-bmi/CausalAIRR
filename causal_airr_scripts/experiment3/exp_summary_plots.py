@@ -13,21 +13,23 @@ from causal_airr_scripts.dataset_util import write_to_file
 from causal_airr_scripts.util import get_overlap_length
 
 
-def make_summary(corrected_path: Path, not_corrected_path: Path, control_path: Path, result_path: Path):
-    corrected_df = pd.read_csv(corrected_path, sep='\t')
-    not_corrected_df = pd.read_csv(not_corrected_path, sep='\t')
-    control_df = pd.read_csv(control_path, sep='\t')
+def make_summary(paths: List[Path], result_path: Path):
+    dfs = []
+    for path in paths:
+        df = pd.read_csv(path / 'metrics.tsv', sep='\t')
+        df['setting'] = path.parent.name + "_" + path.name
+        dfs.append(df)
 
-    fig = make_subplots(1, corrected_df.shape[1] - 1, subplot_titles=corrected_df.columns.tolist()[:-1], horizontal_spacing=0.05, shared_yaxes=True)
+    write_to_file(pd.concat(dfs, axis=0), result_path / 'summary_metrics.tsv')
 
-    for index, metric in enumerate(corrected_df.columns):
-        if metric != 'repetition':
-            fig.add_trace(go.Box(name='batch_baseline', y=not_corrected_df[metric].values.tolist(), boxpoints='all', jitter=0.3, pointpos=-1.8,
-                                 opacity=0.5, marker_color=px.colors.sequential.Aggrnyl[0]), 1, index+1)
-            fig.add_trace(go.Box(name='batch_corrected', y=corrected_df[metric].values.tolist(), boxpoints='all', jitter=0.3, pointpos=-1.8,
-                                 opacity=0.5, marker_color=px.colors.sequential.Aggrnyl[1]), 1, index+1)
-            fig.add_trace(go.Box(name='control', y=control_df[metric].values.tolist(), boxpoints='all', jitter=0.3, pointpos=-1.8, opacity=0.7,
-                                 marker_color=px.colors.sequential.Aggrnyl[2]), 1, index + 1)
+    fig = make_subplots(1, dfs[0].shape[1] - 2, subplot_titles=dfs[0].columns.tolist()[:-2], horizontal_spacing=0.05, shared_yaxes=True)
+
+    for index, metric in enumerate(dfs[0].columns):
+        if metric not in ['repetition', 'setting']:
+            for df_index, df in enumerate(dfs):
+                name = paths[df_index].parent.name + "_" + paths[df_index].name
+                fig.add_trace(go.Box(name=name, y=df[metric].values.tolist(), boxpoints='all', jitter=0.3, pointpos=-1.8,
+                                     opacity=0.5, marker_color=px.colors.sequential.Aggrnyl[df_index]), 1, index + 1)
 
     fig.update_layout(template='plotly_white', showlegend=False)
     fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
@@ -51,8 +53,7 @@ def plot_enriched_kmers(path: Path, df: pd.DataFrame, k: int):
                                  legendgroup=setting, showlegend=overlap_length == 0, marker_color=px.colors.sequential.Aggrnyl[setting_index]),
                           col=overlap_length + 1, row=1)
 
-    fig.update_layout(template="plotly_white", legend={'orientation': 'h', 'yanchor': 'bottom', 'xanchor': 'right', 'x': 1, 'y': 1.08},
-                      title=f"Enriched k-mer overlap with true motifs")
+    fig.update_layout(template="plotly_white", legend={'orientation': 'h', 'yanchor': 'bottom', 'xanchor': 'right', 'x': 1, 'y': 1.08})
     fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
     fig.update_yaxes(showline=True, linewidth=1, linecolor='black')
 

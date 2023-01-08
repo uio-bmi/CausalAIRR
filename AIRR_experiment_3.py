@@ -4,6 +4,8 @@ from datetime import datetime
 from itertools import product
 from pathlib import Path
 
+from sklearn.linear_model import Ridge, LinearRegression
+
 from causal_airr_scripts.dataset_util import setup_path
 from causal_airr_scripts.experiment3.SimConfig import SimConfig, make_signal, ImplantingConfig, ImplantingSetting, ImplantingUnit, ImplantingGroup
 from causal_airr_scripts.experiment3.experiment3 import Experiment3
@@ -14,13 +16,14 @@ def main(namespace):
 
     test_set_percentage = 0.3
 
-    for p_noise, sequence_count in product([0.1, 0.4, 0.45, 0.49], [1000, 5000]):
+    for p_noise, sequence_count in product([0.1, 0.4, 0.49], [5000]):
 
         test_set_size = round(test_set_percentage * sequence_count)
 
         config = SimConfig(k=3, repetitions=5, p_noise=p_noise, olga_model_name='humanTRB', sequence_encoding='continuous_kmer',
                            signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5},
                                               hamming_dist_weights={1: 0.8, 0: 0.2}, position_weights={1: 1.}),
+                           batch_corrections=[None, LinearRegression(), Ridge(alpha=1e3), Ridge(alpha=1e4)],
                            implanting_config=ImplantingConfig(
                                control=ImplantingSetting(train=ImplantingGroup(baseline=ImplantingUnit(0.5, []), modified=ImplantingUnit(0.5, []),
                                                                                seq_count=sequence_count),
@@ -41,18 +44,19 @@ def main(namespace):
 
 
 def main_test_run():
-    config = SimConfig(k=3, repetitions=2, p_noise=0.4, olga_model_name='humanTRB', sequence_encoding='continuous_kmer',
+    config = SimConfig(k=3, repetitions=2, p_noise=0.1, olga_model_name='humanTRB', sequence_encoding='continuous_kmer',
                        signal=make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.33, 109: 0.34, 110: 0.33},
                                           hamming_dist_weights={0: 0.2, 1: 0.8}, position_weights={1: 1.}),
+                       batch_corrections=[None, LinearRegression(), Ridge(alpha=1e3), Ridge(alpha=1e4)],
                        implanting_config=ImplantingConfig(
                                control=ImplantingSetting(train=ImplantingGroup(baseline=ImplantingUnit(0.5, []), modified=ImplantingUnit(0.5, []),
                                                                                seq_count=100),
                                                          test=ImplantingGroup(baseline=ImplantingUnit(0.5, []), modified=ImplantingUnit(0.5, []),
-                                                                              seq_count=20),
+                                                                              seq_count=50),
                                                          name='control'),
                                batch=ImplantingSetting(train=ImplantingGroup(baseline=ImplantingUnit(0.9, []), seq_count=100,
                                                                              modified=ImplantingUnit(0.1, ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"])),
-                                                       test=ImplantingGroup(baseline=ImplantingUnit(0.5, []), seq_count=20,
+                                                       test=ImplantingGroup(baseline=ImplantingUnit(0.5, []), seq_count=50,
                                                                             modified=ImplantingUnit(0.5, ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"])),
                                                        name='batch')))
 
