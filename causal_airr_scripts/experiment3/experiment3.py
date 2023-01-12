@@ -1,5 +1,6 @@
 import copy
 import logging
+import re
 import shutil
 from pathlib import Path
 from typing import Tuple, List
@@ -19,7 +20,7 @@ from immuneML.environment.SequenceType import SequenceType
 from immuneML.util.PathBuilder import PathBuilder
 from immuneML.util.ReadsType import ReadsType
 from sklearn.linear_model import LogisticRegression, RidgeCV, LinearRegression, Ridge
-from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score
+from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score, accuracy_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
@@ -47,11 +48,11 @@ class Experiment3:
 
     @property
     def col_mapping(self) -> dict:
-        return {0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: self.signal_name, 4: 'batch'}
+        return {0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: self.signal_name, 4: 'implanted', 5: 'batch'}
 
     @property
     def meta_col_mapping(self) -> dict:
-        return {self.signal_name: self.signal_name, 'batch': 'batch'}
+        return {self.signal_name: self.signal_name, 'batch': 'batch', 'implanted': 'implanted'}
 
     def run(self, path: Path):
 
@@ -112,7 +113,13 @@ class Experiment3:
         return metrics
 
     def simulate_data(self, path: Path, impl_group: ImplantingGroup, name: str, setting_name: str) -> SequenceDataset:
-        df = generate_sequences(self.sim_config.olga_model_name, impl_group, self.sim_config.signal, self.sim_config.p_noise, path, setting_name)
+
+        motifs = re.compile("|".join([motif.seed[0] + "[A-Z]" + motif.seed[2]
+                                      if any(key != 0 and val > 0 for key, val in motif.instantiation._hamming_distance_probabilities.items())
+                                      else motif.seed for motif in self.sim_config.signal.motifs]))
+
+        df = generate_sequences(self.sim_config.olga_model_name, impl_group, self.sim_config.signal, path, setting_name, motifs)
+
         logging.info(f"Generated {df.shape[0]} sequences for {name} dataset.")
         logging.info(f"Summary:\n\tBatch 0:\n\t\tsignal=True: {df[(df['batch'] == 0) & (df['signal'] == 1)].shape[0]} sequences\n"
                      f"\t\tsignal=False: {df[(df['batch'] == 0) & (df['signal'] == 0)].shape[0]} sequences\n"
@@ -228,6 +235,8 @@ class Experiment3:
         y_pred = logistic_regression.predict(test_dataset.encoded_data.examples)
         true_y = test_dataset.encoded_data.labels[self.signal_name]
 
+        self._summarize_predictions(test_dataset, y_pred, path)
+
         tn, fp, fn, tp = confusion_matrix(true_y, y_pred).ravel()
         labels = self.label_configuration.get_label_values(self.signal_name)
 
@@ -247,6 +256,34 @@ class Experiment3:
         write_to_file(kmer_df, path / 'enriched_kmer_metrics.tsv')
 
         return metrics
+
+    def _summarize_predictions(self, dataset: SequenceDataset, predictions, path: Path):
+        df = dataset.get_metadata(['signal', 'implanted'], return_df=True)
+        df['predicted'] = predictions
+
+        write_to_file(df, path / 'test_predictions.tsv')
+
+        count_summary_df = df.value_counts(sort=False).reset_index().rename(columns={0: 'counts'})\
+            .pivot_table(values='counts', index=['signal', 'implanted'], columns=['predicted'])\
+            .rename(columns={0: 'predicted_0', 1: 'predicted_1'}).reset_index()
+
+        write_to_file(count_summary_df, path / 'count_summary.tsv')
+
+        summary = {}
+
+        for signal in df['signal'].unique():
+            summary[f'signal_{signal}'] = {}
+            for implanted in df['implanted'].unique():
+                selection = (df['signal'] == signal) & (df['implanted'] == implanted)
+                if selection.shape[0] != 0:
+                    summary[f'signal_{signal}'][f'implanted_{implanted}'] = np.sum(df.loc[selection, 'predicted'] == (df.loc[selection, 'signal'] == 'True')) / np.sum(selection)
+                else:
+                    summary[f'signal_{signal}'][f'implanted_{implanted}'] = -1
+
+        summary_df = pd.DataFrame.from_dict(summary)
+        summary_df.reset_index(inplace=True)
+        summary_df.rename(columns={'index': 'implanted'}, inplace=True)
+        write_to_file(summary_df, path / 'test_prediction_summary.tsv')
 
     def _save_metrics(self, metrics: dict, path: Path):
         with open(path / 'metrics.yaml', 'w') as file:

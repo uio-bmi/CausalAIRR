@@ -17,6 +17,8 @@ from immuneML.simulation.signal_implanting_strategy.HealthySequenceImplanting im
 from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import ImplantingComputation
 from immuneML.util.PathBuilder import PathBuilder
 
+from causal_airr_scripts.experiment3.SimConfig import ImplantingUnit
+
 
 def make_immune_state_signals(signal_name: str = "immune_state") -> List[Signal]:
     motif1 = Motif(identifier="motif1", seed="EQY",
@@ -107,17 +109,25 @@ def make_sequence_with_signal(sequence, signal: Signal) -> str:
 
     motif = random.choice(signal.motifs)
 
-    return signal.implanting_strategy.implant_in_sequence(seq, signal, motif=motif).amino_acid_sequence
+    implanted_seq = signal.implanting_strategy.implant_in_sequence(seq, signal, motif=motif)
+
+    return implanted_seq.amino_acid_sequence
 
 
-def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_rate: float, p_noise: float):
+def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_unit: ImplantingUnit):
     sequences['signal'] = False
-    seq_with_signal_count = round(implanting_rate * sequences.shape[0])
-    indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_signal_count, replace=False)
+    sequences['implanted'] = False
+    seq_with_signal_count = round(implanting_unit.implanting_prob * sequences.shape[0])
+    positive_indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_signal_count, replace=False)
 
-    for index in indices:
-        if random.uniform(0, 1) > p_noise:
-            sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
-        sequences.at[index, 'signal'] = True
+    for index in positive_indices:
+        sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
+        sequences.at[index, 'implanted'] = True
+        if random.uniform(0, 1) < implanting_unit.pos_given_motif_prob:
+            sequences.at[index, 'signal'] = True
+
+    for index in [ind for ind in range(sequences.shape[0]) if ind not in positive_indices]:
+        if random.uniform(0, 1) < implanting_unit.pos_given_no_motif_prob:
+            sequences.at[index, 'signal'] = True
 
     return sequences

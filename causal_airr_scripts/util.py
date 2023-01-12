@@ -1,5 +1,3 @@
-import copy
-
 import yaml
 
 from causal_airr_scripts.experiment3.SimConfig import SimConfig
@@ -22,20 +20,21 @@ def get_overlap_length(word1, word2, middle_replacement_allowed: bool) -> int:
         overlap = False
         overlap_length = 0
 
+    if middle_replacement_allowed and not overlap and len(min_word) == len(max_word):
+        if max_word[0] == min_word[0] and max_word[-1] == min_word[-1]:
+            overlap_length = 2
+            overlap = True
+
     k = len(min_word) - 1
 
     while k >= 1 and not overlap:
 
-        if max_word.startswith(min_word[k:]) or max_word.endswith(min_word[:k]) or \
+        if max_word.startswith(min_word[-k:]) or max_word.endswith(min_word[:k]) or \
            min_word.startswith(max_word[-k:]) or min_word.endswith(max_word[:k]):
 
             overlap = True
             overlap_length = k
         k -= 1
-
-    if middle_replacement_allowed and not overlap and len(min_word) == len(max_word):
-        if max_word[0] == min_word[0] and max_word[-1] == min_word[-1]:
-            overlap_length = 2
 
     return overlap_length
 

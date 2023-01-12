@@ -1,5 +1,6 @@
 import re
 from pathlib import Path
+from re import Pattern
 from typing import List
 
 import numpy as np
@@ -15,7 +16,8 @@ DEFAULT_MODEL_FOLDER_MAP = {
 }
 
 
-def gen_olga_sequences(olga_model_name: str, skip_v_genes: list = None, seq_count: int = 0, keep_v_genes: list = None, min_length: int = 0):
+def gen_olga_sequences(olga_model_name: str, skip_v_genes: list = None, seq_count: int = 0, keep_v_genes: list = None, skip_motifs: Pattern = None,
+                       min_length: int = 0):
     olga_model = load_olga_model(olga_model_name)
 
     sequences = pd.DataFrame(index=np.arange(seq_count), columns=["sequence_aa", "v_call", "j_call"])
@@ -24,18 +26,19 @@ def gen_olga_sequences(olga_model_name: str, skip_v_genes: list = None, seq_coun
     while i < seq_count:
         seq_row = olga_model["gen_model"].gen_rnd_prod_CDR3()
 
-        if keep_sequence(seq_row, skip_v_genes, keep_v_genes, olga_model, min_length):
+        if keep_sequence(seq_row, skip_v_genes, keep_v_genes, olga_model, min_length, skip_motifs):
             sequences.loc[i] = (seq_row[1], olga_model["v_gene_mapping"][seq_row[2]], olga_model["j_gene_mapping"][seq_row[3]])
             i += 1
 
     return sequences
 
 
-def keep_sequence(seq_row, skip_v_genes: list, keep_v_genes: list, olga_model: dict, min_length: int = 0):
+def keep_sequence(seq_row, skip_v_genes: list, keep_v_genes: list, olga_model: dict, min_length: int = 0, skip_motifs: Pattern = None):
     return len(seq_row[1]) >= min_length and \
            ((skip_v_genes is not None and not in_list(olga_model['v_gene_mapping'][seq_row[2]], skip_v_genes))
             or (keep_v_genes is not None and in_list(olga_model['v_gene_mapping'][seq_row[2]], keep_v_genes))
-            or ((skip_v_genes is None or len(skip_v_genes) == 0) and (keep_v_genes is None or len(keep_v_genes) == 0)))
+            or ((skip_v_genes is None or len(skip_v_genes) == 0) and (keep_v_genes is None or len(keep_v_genes) == 0))) and \
+           not re.search(pattern=skip_motifs, string=seq_row[1])
 
 
 def in_list(gene: str, gene_list: List[str]):

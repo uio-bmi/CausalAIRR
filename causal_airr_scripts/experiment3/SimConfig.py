@@ -11,9 +11,24 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 
 
 @dataclass
+class LabelProbGivenMotif:
+    pos_given_no_motif_prob: float
+    pos_given_motif_prob: float
+
+
+@dataclass
+class LabelProbSet:
+    control: LabelProbGivenMotif
+    batch0: LabelProbGivenMotif
+    batch1: LabelProbGivenMotif
+
+
+@dataclass
 class ImplantingUnit:
-    implanting_prob: float
+    implanting_prob: float  # probability to have motif
     skip_genes: List[str]
+    pos_given_no_motif_prob: float
+    pos_given_motif_prob: float
 
 
 @dataclass
@@ -63,7 +78,6 @@ class ImplantingConfig:
 class SimConfig:
     k: int
     repetitions: int
-    p_noise: float
     olga_model_name: str
     signal: Signal
     implanting_config: ImplantingConfig
@@ -78,6 +92,9 @@ class SimConfig:
                                                     "position_weights": copy.deepcopy(motif.instantiation.position_weights)}
                                        for motif in self.signal.motifs},
                             'sequence_positions': self.signal.implanting_strategy.sequence_position_weights}
+
+        config['batch_corrections'] = copy.deepcopy([f"{obj.__class__.__name__}_{obj.alpha if hasattr(obj, 'alpha') else ''}" for obj in self.batch_corrections])
+
         return config
 
     @classmethod
