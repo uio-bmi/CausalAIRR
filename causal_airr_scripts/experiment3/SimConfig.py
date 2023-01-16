@@ -12,8 +12,8 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 
 @dataclass
 class LabelProbGivenMotif:
-    pos_given_no_motif_prob: float
-    pos_given_motif_prob: float
+    motif_given_no_label_prob: float
+    motif_given_label_prob: float
 
 
 @dataclass

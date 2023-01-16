@@ -17,12 +17,10 @@ from causal_airr_scripts.util import write_config
 def main(namespace):
     batch_effect_genes = ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"]
 
-    proba_sets = [LabelProbSet(control=LabelProbGivenMotif(8 / 17, 2 / 3), batch0=LabelProbGivenMotif(72 / 81, 18 / 19),
-                               batch1=LabelProbGivenMotif(8 / 89, 2 / 11)),
-                  LabelProbSet(control=LabelProbGivenMotif(1 / 3, 3 / 4), batch0=LabelProbGivenMotif(36 / 44, 54 / 56),
-                               batch1=LabelProbGivenMotif(4 / 76, 6 / 24))]
+    proba_sets = [LabelProbSet(control=LabelProbGivenMotif(3 / 50, 42 / 50), batch0=LabelProbGivenMotif(0.06, 21 / 25),
+                               batch1=LabelProbGivenMotif(3 / 50, 21 / 25))]
 
-    run_one_config(proba_sets[1], 1000, batch_effect_genes, 1, namespace.result_path, namespace.num_processes)
+    run_one_config(proba_sets[0], 1000, batch_effect_genes, 1, namespace.result_path, namespace.num_processes)
 
     # with Pool(processes=2) as pool:
     #     pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, index, namespace.result_path, namespace.num_processes)
@@ -37,26 +35,26 @@ def run_one_config(proba_set, sequence_count, batch_effect_genes, index, result_
                        batch_corrections=[None, Ridge(alpha=1e8), Ridge(alpha=1e9)],
                        implanting_config=ImplantingConfig(
                            control=ImplantingSetting(
-                               train=ImplantingGroup(baseline=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
-                                                                             proba_set.control.pos_given_motif_prob),
-                                                     modified=ImplantingUnit(0.5, batch_effect_genes, proba_set.control.pos_given_no_motif_prob,
-                                                                             proba_set.control.pos_given_motif_prob), seq_count=sequence_count),
-                               test=ImplantingGroup(baseline=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
-                                                                            proba_set.control.pos_given_motif_prob),
-                                                    modified=ImplantingUnit(0.5, batch_effect_genes, proba_set.control.pos_given_no_motif_prob,
-                                                                            proba_set.control.pos_given_motif_prob), seq_count=sequence_count),
+                               train=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                                             proba_set.control.motif_given_label_prob),
+                                                     modified=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                                             proba_set.control.motif_given_label_prob), seq_count=sequence_count),
+                               test=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                                            proba_set.control.motif_given_label_prob),
+                                                    modified=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                                            proba_set.control.motif_given_label_prob), seq_count=sequence_count),
                                name='control'),
                            batch=ImplantingSetting(
-                               train=ImplantingGroup(baseline=ImplantingUnit(0.9, [], proba_set.batch0.pos_given_no_motif_prob,
-                                                                             proba_set.batch0.pos_given_motif_prob), seq_count=sequence_count,
-                                                     modified=ImplantingUnit(0.1, batch_effect_genes, proba_set.batch1.pos_given_no_motif_prob,
-                                                                             proba_set.batch1.pos_given_motif_prob)),
-                               test=ImplantingGroup(baseline=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
-                                                                            proba_set.control.pos_given_motif_prob),
+                               train=ImplantingGroup(baseline=ImplantingUnit(0.862, [], proba_set.batch0.motif_given_no_label_prob,
+                                                                             proba_set.batch0.motif_given_label_prob), seq_count=sequence_count,
+                                                     modified=ImplantingUnit(0.238, batch_effect_genes, proba_set.batch1.motif_given_no_label_prob,
+                                                                             proba_set.batch1.motif_given_label_prob)),
+                               test=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                                            proba_set.control.motif_given_label_prob),
                                                     seq_count=sequence_count,
-                                                    modified=ImplantingUnit(0.5, batch_effect_genes,
-                                                                            proba_set.control.pos_given_no_motif_prob,
-                                                                            proba_set.control.pos_given_motif_prob)),
+                                                    modified=ImplantingUnit(0.55, batch_effect_genes,
+                                                                            proba_set.control.motif_given_no_label_prob,
+                                                                            proba_set.control.motif_given_label_prob)),
                                name='batch')))
 
     path = setup_path(result_path / f"experiment3_results/AIRR_classification_setup_{index}_seqcount_{sequence_count}_{datetime.now()}")
