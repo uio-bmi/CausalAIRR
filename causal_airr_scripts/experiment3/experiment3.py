@@ -19,7 +19,7 @@ from immuneML.environment.LabelConfiguration import LabelConfiguration
 from immuneML.environment.SequenceType import SequenceType
 from immuneML.util.PathBuilder import PathBuilder
 from immuneML.util.ReadsType import ReadsType
-from sklearn.linear_model import LogisticRegression, RidgeCV, LinearRegression, Ridge
+from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
 from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score, accuracy_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
@@ -56,6 +56,8 @@ class Experiment3:
 
     def run(self, path: Path):
 
+        EnvironmentSettings.set_cache_path(path / 'cache')
+
         setting_paths = []
 
         res_path = self.run_for_impl_setup(PathBuilder.build(path / 'control'), self.sim_config.implanting_config.control, correct=None)
@@ -64,6 +66,8 @@ class Experiment3:
         for correction in self.sim_config.batch_corrections:
             res_path = self.run_for_impl_setup(PathBuilder.build(path / 'batch'), self.sim_config.implanting_config.batch, correction)
             setting_paths.append(res_path)
+
+        shutil.rmtree(path / 'cache')
 
         self.make_reports(setting_paths, path)
 
@@ -97,7 +101,6 @@ class Experiment3:
         return setting_path
 
     def run_one_repetition(self, path: Path, impl_setting: ImplantingSetting, correct: bool) -> dict:
-        EnvironmentSettings.set_cache_path(path / 'cache')
 
         train_dataset = self.simulate_data(PathBuilder.build(path / 'train_dataset'), impl_setting.train, 'train', impl_setting.name)
         test_dataset = self.simulate_data(PathBuilder.build(path / 'test_dataset'), impl_setting.test, 'test', impl_setting.name)
@@ -107,8 +110,6 @@ class Experiment3:
         log_reg = self.train_log_reg(train_dataset)
 
         metrics = self.assess_log_reg(log_reg, test_dataset, PathBuilder.build(path / 'assessment'))
-
-        shutil.rmtree(path / 'cache')
 
         return metrics
 
@@ -171,7 +172,7 @@ class Experiment3:
 
         return encoded_train, encoded_test
 
-    def correct_encoded_for_batch(self, train_dataset: SequenceDataset, path: Path, correct: bool) -> SequenceDataset:
+    def correct_encoded_for_batch(self, train_dataset: SequenceDataset, path: Path, correct) -> SequenceDataset:
 
         if correct is not None:
             PathBuilder.build(path)
@@ -195,7 +196,7 @@ class Experiment3:
         meta_train_df[self.signal_name] = [1 if el == 'True' else 0 for el in meta_train_df['signal']]
         meta_train_df['batch'] = [1 if el == '1' else 0 for el in meta_train_df['batch']]
 
-        correction_coefficients = {"feature": [], "correction": []}
+        correction_coefficients = {"feature": [], "correction": [], "signal_contribution": []}
 
         for feature_index, feature in enumerate(dataset.encoded_data.feature_names):
 
@@ -207,6 +208,7 @@ class Experiment3:
 
             correction_coefficients['correction'].append(lin_reg.coef_[1])
             correction_coefficients['feature'].append(feature)
+            correction_coefficients['signal_contribution'].append(lin_reg.coef_[0])
 
             corrected_y = copy.deepcopy(np.array(y))
             corrected_y[meta_train_df['batch'] == 1] = corrected_y[meta_train_df['batch'] == 1] - lin_reg.coef_[1]
@@ -221,7 +223,7 @@ class Experiment3:
     def train_log_reg(self, train_dataset: SequenceDataset) -> LogisticRegression:
         log_reg = LogisticRegression(penalty="l1", solver='saga', max_iter=800)
 
-        clf = GridSearchCV(estimator=log_reg, n_jobs=self.num_processes, param_grid={"C": [1, 10, 100, 1000]}, scoring='balanced_accuracy',
+        clf = GridSearchCV(estimator=log_reg, n_jobs=self.num_processes, param_grid={"C": [1, 0.1, 0.01, 0.001]}, scoring='balanced_accuracy',
                            cv=3, verbose=0)
 
         clf.fit(train_dataset.encoded_data.examples, train_dataset.encoded_data.labels[self.signal_name])
@@ -241,10 +243,10 @@ class Experiment3:
         labels = self.label_configuration.get_label_values(self.signal_name)
 
         metrics = {
-            'specificity': tn / (tn + fp),
-            'sensitivity': recall_score(true_y, y_pred, labels=labels),
-            'balanced_accuracy': balanced_accuracy_score(true_y, y_pred),
-            'auc': roc_auc_score(true_y, y_pred, labels=labels)
+            'specificity': float(tn / (tn + fp)),
+            'sensitivity': float(recall_score(true_y, y_pred, labels=labels)),
+            'balanced_accuracy': float(balanced_accuracy_score(true_y, y_pred)),
+            'auc': float(roc_auc_score(true_y, y_pred, labels=labels))
         }
 
         self._save_metrics(metrics, path)
@@ -293,6 +295,6 @@ class Experiment3:
         if correct is None:
             return "no_correction"
         elif isinstance(correct, Ridge):
-            return f"ridge_correction_{correct.alpha:.0e}"
+            return f"ridge_{correct.alpha:.0e}"
         else:
-            return "linear_reg_correction"
+            return "linear_reg"

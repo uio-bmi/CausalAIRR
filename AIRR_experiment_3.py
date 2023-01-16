@@ -22,9 +22,11 @@ def main(namespace):
                   LabelProbSet(control=LabelProbGivenMotif(1 / 3, 3 / 4), batch0=LabelProbGivenMotif(36 / 44, 54 / 56),
                                batch1=LabelProbGivenMotif(4 / 76, 6 / 24))]
 
-    with Pool(processes=2) as pool:
-        pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, index, namespace.result_path, namespace.num_processes)
-                                      for index, (proba_set, sequence_count) in enumerate(product(proba_sets, [5000]))])
+    run_one_config(proba_sets[1], 1000, batch_effect_genes, 1, namespace.result_path, namespace.num_processes)
+
+    # with Pool(processes=2) as pool:
+    #     pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, index, namespace.result_path, namespace.num_processes)
+    #                                   for index, (proba_set, sequence_count) in enumerate(product(proba_sets, [5000]))])
 
 
 def run_one_config(proba_set, sequence_count, batch_effect_genes, index, result_path, num_processes):
@@ -32,16 +34,16 @@ def run_one_config(proba_set, sequence_count, batch_effect_genes, index, result_
                          position_weights={1: 1.})
 
     config = SimConfig(k=3, repetitions=5, olga_model_name='humanTRB', sequence_encoding='continuous_kmer', signal=signal,
-                       batch_corrections=[None, LinearRegression(), Ridge(alpha=1e3), Ridge(alpha=1e4)],
+                       batch_corrections=[None, Ridge(alpha=1e8), Ridge(alpha=1e9)],
                        implanting_config=ImplantingConfig(
                            control=ImplantingSetting(
                                train=ImplantingGroup(baseline=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
                                                                              proba_set.control.pos_given_motif_prob),
-                                                     modified=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
+                                                     modified=ImplantingUnit(0.5, batch_effect_genes, proba_set.control.pos_given_no_motif_prob,
                                                                              proba_set.control.pos_given_motif_prob), seq_count=sequence_count),
                                test=ImplantingGroup(baseline=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
                                                                             proba_set.control.pos_given_motif_prob),
-                                                    modified=ImplantingUnit(0.5, [], proba_set.control.pos_given_no_motif_prob,
+                                                    modified=ImplantingUnit(0.5, batch_effect_genes, proba_set.control.pos_given_no_motif_prob,
                                                                             proba_set.control.pos_given_motif_prob), seq_count=sequence_count),
                                name='control'),
                            batch=ImplantingSetting(
