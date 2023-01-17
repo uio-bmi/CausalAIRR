@@ -19,8 +19,8 @@ from immuneML.environment.LabelConfiguration import LabelConfiguration
 from immuneML.environment.SequenceType import SequenceType
 from immuneML.util.PathBuilder import PathBuilder
 from immuneML.util.ReadsType import ReadsType
-from sklearn.linear_model import LogisticRegression, LinearRegression, Ridge
-from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score, accuracy_score
+from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.metrics import confusion_matrix, recall_score, balanced_accuracy_score, roc_auc_score
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 

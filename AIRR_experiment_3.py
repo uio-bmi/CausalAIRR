@@ -9,7 +9,7 @@ from sklearn.linear_model import Ridge, LinearRegression
 
 from causal_airr_scripts.dataset_util import setup_path
 from causal_airr_scripts.experiment3.SimConfig import SimConfig, make_signal, ImplantingConfig, ImplantingSetting, ImplantingUnit, ImplantingGroup, \
-    LabelProbGivenMotif, LabelProbSet
+    MotifProbGivenLabel, LabelProbSet
 from causal_airr_scripts.experiment3.experiment3 import Experiment3
 from causal_airr_scripts.util import write_config
 
@@ -17,17 +17,19 @@ from causal_airr_scripts.util import write_config
 def main(namespace):
     batch_effect_genes = ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"]
 
-    proba_sets = [LabelProbSet(control=LabelProbGivenMotif(3 / 50, 42 / 50), batch0=LabelProbGivenMotif(0.06, 21 / 25),
-                               batch1=LabelProbGivenMotif(3 / 50, 21 / 25))]
+    proba_sets = [LabelProbSet(control=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.45),
+                               batch0=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.138),
+                               batch1=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.762), name='easy'),
+                  LabelProbSet(control=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.4),
+                               batch0=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.16),
+                               batch1=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.64), name='hard')]
 
-    run_one_config(proba_sets[0], 1000, batch_effect_genes, 1, namespace.result_path, namespace.num_processes)
-
-    # with Pool(processes=2) as pool:
-    #     pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, index, namespace.result_path, namespace.num_processes)
-    #                                   for index, (proba_set, sequence_count) in enumerate(product(proba_sets, [5000]))])
+    with Pool(processes=namespace.num_processes) as pool:
+        pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, namespace.result_path, 2)
+                                      for index, (proba_set, sequence_count) in enumerate(product(proba_sets, [1000, 5000]))])
 
 
-def run_one_config(proba_set, sequence_count, batch_effect_genes, index, result_path, num_processes):
+def run_one_config(proba_set, sequence_count, batch_effect_genes, result_path, num_processes):
     signal = make_signal(motif_seeds=["YEQ", "PQH", "LFF"], seq_position_weights={108: 0.5, 109: 0.5}, hamming_dist_weights={1: 0.8, 0: 0.2},
                          position_weights={1: 1.})
 
@@ -35,29 +37,29 @@ def run_one_config(proba_set, sequence_count, batch_effect_genes, index, result_
                        batch_corrections=[None, Ridge(alpha=1e8), Ridge(alpha=1e9)],
                        implanting_config=ImplantingConfig(
                            control=ImplantingSetting(
-                               train=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                               train=ImplantingGroup(baseline=ImplantingUnit(proba_set.control.implanting_prob, [], proba_set.control.motif_given_no_label_prob,
                                                                              proba_set.control.motif_given_label_prob),
-                                                     modified=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                     modified=ImplantingUnit(proba_set.control.implanting_prob, [], proba_set.control.motif_given_no_label_prob,
                                                                              proba_set.control.motif_given_label_prob), seq_count=sequence_count),
-                               test=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                               test=ImplantingGroup(baseline=ImplantingUnit(proba_set.control.implanting_prob, [], proba_set.control.motif_given_no_label_prob,
                                                                             proba_set.control.motif_given_label_prob),
-                                                    modified=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                                                    modified=ImplantingUnit(proba_set.control.implanting_prob, [], proba_set.control.motif_given_no_label_prob,
                                                                             proba_set.control.motif_given_label_prob), seq_count=sequence_count),
                                name='control'),
                            batch=ImplantingSetting(
-                               train=ImplantingGroup(baseline=ImplantingUnit(0.862, [], proba_set.batch0.motif_given_no_label_prob,
+                               train=ImplantingGroup(baseline=ImplantingUnit(proba_set.batch0.implanting_prob, [], proba_set.batch0.motif_given_no_label_prob,
                                                                              proba_set.batch0.motif_given_label_prob), seq_count=sequence_count,
-                                                     modified=ImplantingUnit(0.238, batch_effect_genes, proba_set.batch1.motif_given_no_label_prob,
+                                                     modified=ImplantingUnit(proba_set.batch1.implanting_prob, batch_effect_genes, proba_set.batch1.motif_given_no_label_prob,
                                                                              proba_set.batch1.motif_given_label_prob)),
-                               test=ImplantingGroup(baseline=ImplantingUnit(0.55, [], proba_set.control.motif_given_no_label_prob,
+                               test=ImplantingGroup(baseline=ImplantingUnit(proba_set.control.implanting_prob, [], proba_set.control.motif_given_no_label_prob,
                                                                             proba_set.control.motif_given_label_prob),
                                                     seq_count=sequence_count,
-                                                    modified=ImplantingUnit(0.55, batch_effect_genes,
+                                                    modified=ImplantingUnit(proba_set.control.implanting_prob, batch_effect_genes,
                                                                             proba_set.control.motif_given_no_label_prob,
                                                                             proba_set.control.motif_given_label_prob)),
                                name='batch')))
 
-    path = setup_path(result_path / f"experiment3_results/AIRR_classification_setup_{index}_seqcount_{sequence_count}_{datetime.now()}")
+    path = setup_path(result_path / f"experiment3_results/AIRR_classification_setup_{proba_set.name}_seqcount_{sequence_count}_{datetime.now()}")
     write_config(config, path)
 
     experiment = Experiment3(config, num_processes=num_processes)

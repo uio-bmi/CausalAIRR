@@ -11,16 +11,18 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 
 
 @dataclass
-class LabelProbGivenMotif:
+class MotifProbGivenLabel:
     motif_given_no_label_prob: float
     motif_given_label_prob: float
+    implanting_prob: float
 
 
 @dataclass
 class LabelProbSet:
-    control: LabelProbGivenMotif
-    batch0: LabelProbGivenMotif
-    batch1: LabelProbGivenMotif
+    control: MotifProbGivenLabel
+    batch0: MotifProbGivenLabel
+    batch1: MotifProbGivenLabel
+    name: str
 
 
 @dataclass
