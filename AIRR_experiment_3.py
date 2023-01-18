@@ -17,15 +17,12 @@ from causal_airr_scripts.util import write_config
 def main(namespace):
     batch_effect_genes = ["TRBV20", "TRBV5-1", "TRBV24", "TRBV27"]
 
-    proba_sets = [LabelProbSet(control=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.45),
-                               batch0=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.138),
-                               batch1=MotifProbGivenLabel(0.06, 0.84, implanting_prob=0.762), name='easy'),
-                  LabelProbSet(control=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.4),
-                               batch0=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.16),
-                               batch1=MotifProbGivenLabel(0.1, 0.7, implanting_prob=0.64), name='hard')]
+    proba_sets = [LabelProbSet(control=MotifProbGivenLabel(0.1, 0.8, implanting_prob=0.45),
+                               batch0=MotifProbGivenLabel(0.1, 0.8, implanting_prob=0.17),
+                               batch1=MotifProbGivenLabel(0.1, 0.8, implanting_prob=0.73), name='additional')]
 
-    with Pool(processes=namespace.num_processes) as pool:
-        pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, namespace.result_path, 2)
+    with Pool(processes=2) as pool:
+        pool.starmap(run_one_config, [(proba_set, sequence_count, batch_effect_genes, namespace.result_path, namespace.num_processes)
                                       for index, (proba_set, sequence_count) in enumerate(product(proba_sets, [1000, 5000]))])
 
 
