@@ -115,19 +115,30 @@ def make_sequence_with_signal(sequence, signal: Signal) -> str:
 
 
 def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_unit: ImplantingUnit):
-    sequences['signal'] = False
-    sequences['implanted'] = False
-    seq_with_signal_count = round(implanting_unit.implanting_prob * sequences.shape[0])
-    positive_indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_signal_count, replace=False)
+    if signal:
+        logging.info(f"Implanting for signal {signal.id} with probability {implanting_unit.label_implanting_prob}")
+        sequences[signal.id] = False
+        sequences[f'{signal.id}_implanted'] = False
+        seq_with_motif_count = round(implanting_unit.label_implanting_prob * sequences.shape[0])
+        logging.info(f"Sequence count where the motif will be implanted: {seq_with_motif_count}")
+        motif_indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_motif_count, replace=False)
 
-    for index in positive_indices:
-        sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
-        sequences.at[index, 'implanted'] = True
-        if random.uniform(0, 1) < implanting_unit.pos_given_motif_prob:
-            sequences.at[index, 'signal'] = True
+        for index in motif_indices:
+            sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
+            sequences.at[index, f'{signal.id}_implanted'] = True
 
-    for index in [ind for ind in range(sequences.shape[0]) if ind not in positive_indices]:
-        if random.uniform(0, 1) < implanting_unit.pos_given_no_motif_prob:
-            sequences.at[index, 'signal'] = True
+        seq_with_label_count = round(seq_with_motif_count * implanting_unit.label_given_motif_prob)
+        label_indices = np.random.choice(motif_indices, size=seq_with_label_count, replace=False)
+
+        sequences.loc[label_indices, signal.id] = True
+
+        seq_with_label_count = round((sequences.shape[0] - seq_with_motif_count) * implanting_unit.label_given_no_motif_prob)
+        label_indices = np.random.choice([i for i in np.arange(sequences.shape[0]) if i not in motif_indices], size=seq_with_label_count,
+                                         replace=False)
+        sequences.loc[label_indices, signal.id] = True
+
+        sequences = sequences.sample(frac=1)
+
+        logging.info(sequences.head(10))
 
     return sequences

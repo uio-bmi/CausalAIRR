@@ -1,5 +1,5 @@
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List
 
 from immuneML.simulation.implants.Motif import Motif
@@ -11,26 +11,11 @@ from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import
 
 
 @dataclass
-class MotifProbGivenLabel:
-    motif_given_no_label_prob: float
-    motif_given_label_prob: float
-    implanting_prob: float
-
-
-@dataclass
-class LabelProbSet:
-    control: MotifProbGivenLabel
-    batch0: MotifProbGivenLabel
-    batch1: MotifProbGivenLabel
-    name: str
-
-
-@dataclass
 class ImplantingUnit:
-    implanting_prob: float  # probability to have motif
-    skip_genes: List[str]
-    pos_given_no_motif_prob: float
-    pos_given_motif_prob: float
+    label_implanting_prob: float
+    label_given_no_motif_prob: float
+    label_given_motif_prob: float
+    batch_implanting_prob: float = 0.
 
 
 @dataclass
@@ -81,7 +66,8 @@ class SimConfig:
     k: int
     repetitions: int
     olga_model_name: str
-    signal: Signal
+    signal: dict
+    batch_signal: dict
     implanting_config: ImplantingConfig
     batch_corrections: list
     sequence_encoding: str = "continuous_kmer"
@@ -89,13 +75,9 @@ class SimConfig:
     def to_dict(self) -> dict:
         config = copy.deepcopy(vars(self))
         config['implanting_config'] = self.implanting_config.to_dict()
-        config['signal'] = {'signal_id': self.signal.id,
-                            'motifs': {motif.seed: {'hamming_dist': copy.deepcopy(motif.instantiation._hamming_distance_probabilities),
-                                                    "position_weights": copy.deepcopy(motif.instantiation.position_weights)}
-                                       for motif in self.signal.motifs},
-                            'sequence_positions': self.signal.implanting_strategy.sequence_position_weights}
 
-        config['batch_corrections'] = copy.deepcopy([f"{obj.__class__.__name__}_{obj.alpha if hasattr(obj, 'alpha') else ''}" for obj in self.batch_corrections])
+        config['batch_corrections'] = copy.deepcopy(
+            [f"{obj.__class__.__name__}_{obj.alpha if hasattr(obj, 'alpha') else ''}" for obj in self.batch_corrections])
 
         return config
 
@@ -108,10 +90,11 @@ class SimConfig:
         return SimConfig(**{**config, **{'signal': signal, 'implanting_config': ImplantingConfig.from_dict(config['implanting_config'])}})
 
 
-def make_signal(motif_seeds: List[str], seq_position_weights: dict = None, hamming_dist_weights: dict = None, position_weights: dict = None):
-    return Signal("signal", motifs=[Motif(f"m{i}", GappedKmerInstantiation(hamming_distance_probabilities=hamming_dist_weights,
-                                                                           position_weights=position_weights), seed)
-                                    for i, seed in enumerate(motif_seeds)],
+def make_signal(motif_seeds: List[str], seq_position_weights: dict = None, hamming_dist_weights: dict = None, position_weights: dict = None,
+                signal_name: str = "signal"):
+    return Signal(signal_name, motifs=[Motif(f"m{i}", GappedKmerInstantiation(hamming_distance_probabilities=hamming_dist_weights,
+                                                                              position_weights=position_weights), seed)
+                                       for i, seed in enumerate(motif_seeds)],
                   implanting_strategy=HealthySequenceImplanting(implanting=GappedMotifImplanting(),
                                                                 implanting_computation=ImplantingComputation.ROUND,
                                                                 sequence_position_weights=seq_position_weights))

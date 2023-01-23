@@ -2,12 +2,12 @@ import copy
 import logging
 import re
 import shutil
+from multiprocessing import Pool
 from pathlib import Path
 from typing import Tuple, List
 
 import numpy as np
 import pandas as pd
-import yaml
 from immuneML.analysis.data_manipulation.NormalizationType import NormalizationType
 from immuneML.data_model.dataset.SequenceDataset import SequenceDataset
 from immuneML.data_model.encoded_data.EncodedData import EncodedData
@@ -17,6 +17,7 @@ from immuneML.environment.EnvironmentSettings import EnvironmentSettings
 from immuneML.environment.Label import Label
 from immuneML.environment.LabelConfiguration import LabelConfiguration
 from immuneML.environment.SequenceType import SequenceType
+from immuneML.simulation.implants.Signal import Signal
 from immuneML.util.PathBuilder import PathBuilder
 from immuneML.util.ReadsType import ReadsType
 from sklearn.linear_model import LogisticRegression, Ridge
@@ -25,10 +26,10 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 
 from causal_airr_scripts.dataset_util import get_dataset_from_dataframe, write_to_file
-from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingSetting, ImplantingGroup
+from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingSetting, ImplantingGroup, make_signal
 from causal_airr_scripts.experiment3.exp_summary_plots import make_summary, plot_enriched_kmers, merge_dfs, plot_log_reg_coefficients
 from causal_airr_scripts.experiment3.sequence_generation import generate_sequences
-from causal_airr_scripts.util import overlaps, get_overlap_length
+from causal_airr_scripts.util import overlaps, get_overlap_length, save_to_yaml
 
 
 class Experiment3:
@@ -43,8 +44,16 @@ class Experiment3:
         return LabelConfiguration(labels=[Label(self.signal_name, [True, False])])
 
     @property
+    def signal(self) -> Signal:
+        return make_signal(**self.sim_config.signal)
+
+    @property
+    def batch_signal(self) -> Signal:
+        return make_signal(**self.sim_config.batch_signal)
+
+    @property
     def signal_name(self) -> str:
-        return self.sim_config.signal.id
+        return self.signal.id
 
     @property
     def col_mapping(self) -> dict:
@@ -55,6 +64,8 @@ class Experiment3:
         return {self.signal_name: self.signal_name, 'batch': 'batch', 'implanted': 'implanted'}
 
     def run(self, path: Path):
+
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
         EnvironmentSettings.set_cache_path(path / 'cache')
 
@@ -89,37 +100,39 @@ class Experiment3:
 
     def run_for_impl_setup(self, path: Path, impl_setting: ImplantingSetting, correct):
         setting_path = PathBuilder.build(path / self.get_folder_name_from_correction(correct))
-        all_metrics = []
 
         logging.info(f"Starting run for implanting_group: {impl_setting.to_dict()}, correct={self.get_folder_name_from_correction(correct)}")
 
-        for repetition in range(self.sim_config.repetitions):
-            metrics = self.run_one_repetition(PathBuilder.build(setting_path / f'repetition_{repetition + 1}'), impl_setting, correct)
-            all_metrics.append({**metrics, **{'repetition': repetition + 1}})
+        with Pool(self.num_processes) as pool:
+            all_metrics = pool.starmap(self.run_one_repetition,
+                                       [(PathBuilder.build(setting_path / f'repetition_{repetition + 1}'), impl_setting, correct, repetition)
+                                        for repetition in range(self.sim_config.repetitions)])
 
         write_to_file(pd.DataFrame(all_metrics), setting_path / 'metrics.tsv')
         return setting_path
 
-    def run_one_repetition(self, path: Path, impl_setting: ImplantingSetting, correct: bool) -> dict:
+    def run_one_repetition(self, path: Path, impl_setting: ImplantingSetting, correct: bool, repetition_index: int) -> dict:
 
         train_dataset = self.simulate_data(PathBuilder.build(path / 'train_dataset'), impl_setting.train, 'train', impl_setting.name)
         test_dataset = self.simulate_data(PathBuilder.build(path / 'test_dataset'), impl_setting.test, 'test', impl_setting.name)
 
         train_dataset, test_dataset = self.encode_with_kmers(train_dataset, test_dataset, path / 'encoding', correct)
 
-        log_reg = self.train_log_reg(train_dataset)
+        log_reg_info_path = PathBuilder.build(path / 'assessment')
+        log_reg = self.train_log_reg(train_dataset, log_reg_info_path)
+        metrics = self.assess_log_reg(log_reg, test_dataset, log_reg_info_path)
 
-        metrics = self.assess_log_reg(log_reg, test_dataset, PathBuilder.build(path / 'assessment'))
-
-        return metrics
+        return {**metrics, **{'repetition': repetition_index + 1}}
 
     def simulate_data(self, path: Path, impl_group: ImplantingGroup, name: str, setting_name: str) -> SequenceDataset:
 
         motifs = re.compile("|".join([motif.seed[0] + "[A-Z]" + motif.seed[2]
                                       if any(key != 0 and val > 0 for key, val in motif.instantiation._hamming_distance_probabilities.items())
-                                      else motif.seed for motif in self.sim_config.signal.motifs]))
+                                      else motif.seed for motif in self.signal.motifs]))
 
-        df = generate_sequences(self.sim_config.olga_model_name, impl_group, self.sim_config.signal, path, setting_name, motifs)
+        df = generate_sequences(olga_model_name=self.sim_config.olga_model_name, impl_group=impl_group, signal=self.signal, path=path,
+                                setting_name=setting_name, skip_motifs=motifs,
+                                batch_signal=self.batch_signal if setting_name != 'control' else None)
 
         logging.info(f"Generated {df.shape[0]} sequences for {name} dataset.")
         logging.info(f"Summary:\n\tBatch 0:\n\t\tsignal=True: {df[(df['batch'] == 0) & (df['signal'] == 1)].shape[0]} sequences\n"
@@ -204,8 +217,6 @@ class Experiment3:
             lin_reg = copy.deepcopy(correction)
             lin_reg.fit(meta_train_df.values, y)
 
-            logging.info(f"Correction model (lin reg) batch coefficient for feature {feature}: {lin_reg.coef_[1]}")
-
             correction_coefficients['correction'].append(lin_reg.coef_[1])
             correction_coefficients['feature'].append(feature)
             correction_coefficients['signal_contribution'].append(lin_reg.coef_[0])
@@ -216,14 +227,13 @@ class Experiment3:
 
         correction_coefficients = pd.DataFrame(correction_coefficients)
         write_to_file(correction_coefficients, path / 'correction_coefficients.tsv')
-        logging.info(f"Correction coefficients summary: {correction_coefficients.describe()}")
 
         return corrected_dataset
 
-    def train_log_reg(self, train_dataset: SequenceDataset) -> LogisticRegression:
-        log_reg = LogisticRegression(penalty="l1", solver='saga', max_iter=800)
+    def train_log_reg(self, train_dataset: SequenceDataset, path: Path) -> LogisticRegression:
+        log_reg = LogisticRegression(penalty="l1", solver='saga', max_iter=1000)
 
-        clf = GridSearchCV(estimator=log_reg, n_jobs=self.num_processes, param_grid={"C": [1, 0.1, 0.01, 0.001]}, scoring='balanced_accuracy',
+        clf = GridSearchCV(estimator=log_reg, n_jobs=self.num_processes, param_grid={"C": [1, 0.1, 0.01, 0.001, 0.0001]}, scoring='balanced_accuracy',
                            cv=3, verbose=0)
 
         clf.fit(train_dataset.encoded_data.examples, train_dataset.encoded_data.labels[self.signal_name])
@@ -231,7 +241,11 @@ class Experiment3:
         bacc = balanced_accuracy_score(train_dataset.encoded_data.labels[self.signal_name], clf.predict(train_dataset.encoded_data.examples))
         logging.info(f"Training balanced accuracy: {bacc}")
 
-        return clf.best_estimator_
+        log_reg = clf.best_estimator_
+
+        save_to_yaml(vars(log_reg), path / 'log_reg.yaml')
+
+        return log_reg
 
     def assess_log_reg(self, logistic_regression: LogisticRegression, test_dataset: SequenceDataset, path: Path):
         y_pred = logistic_regression.predict(test_dataset.encoded_data.examples)
@@ -249,12 +263,12 @@ class Experiment3:
             'auc': float(roc_auc_score(true_y, y_pred, labels=labels))
         }
 
-        self._save_metrics(metrics, path)
-        plot_log_reg_coefficients(logistic_regression, test_dataset.encoded_data.feature_names, self.top_n_coeffs, self.sim_config.signal.motifs, path)
+        save_to_yaml(metrics, path / 'metrics.yaml')
+        plot_log_reg_coefficients(logistic_regression, test_dataset.encoded_data.feature_names, self.top_n_coeffs, self.signal.motifs, path)
 
         sorted_indices = np.argsort(np.abs(logistic_regression.coef_.flatten()))[-self.top_n_coeffs:]
         enriched_kmers = np.array(test_dataset.encoded_data.feature_names)[sorted_indices]
-        kmer_df = pd.DataFrame(self._assess_kmer_discovery(self.sim_config.signal.motifs, enriched_kmers, self.sim_config.k))
+        kmer_df = pd.DataFrame(self._assess_kmer_discovery(self.signal.motifs, enriched_kmers, self.sim_config.k))
         write_to_file(kmer_df, path / 'enriched_kmer_metrics.tsv')
 
         return metrics
@@ -270,26 +284,6 @@ class Experiment3:
             .rename(columns={0: 'predicted_0', 1: 'predicted_1'}).reset_index()
 
         write_to_file(count_summary_df, path / 'count_summary.tsv')
-
-        summary = {}
-
-        for signal in df['signal'].unique():
-            summary[f'signal_{signal}'] = {}
-            for implanted in df['implanted'].unique():
-                selection = (df['signal'] == signal) & (df['implanted'] == implanted)
-                if selection.shape[0] != 0:
-                    summary[f'signal_{signal}'][f'implanted_{implanted}'] = np.sum(df.loc[selection, 'predicted'] == (df.loc[selection, 'signal'] == 'True')) / np.sum(selection)
-                else:
-                    summary[f'signal_{signal}'][f'implanted_{implanted}'] = -1
-
-        summary_df = pd.DataFrame.from_dict(summary)
-        summary_df.reset_index(inplace=True)
-        summary_df.rename(columns={'index': 'implanted'}, inplace=True)
-        write_to_file(summary_df, path / 'test_prediction_summary.tsv')
-
-    def _save_metrics(self, metrics: dict, path: Path):
-        with open(path / 'metrics.yaml', 'w') as file:
-            yaml.dump(metrics, file)
 
     def get_folder_name_from_correction(self, correct) -> str:
         if correct is None:

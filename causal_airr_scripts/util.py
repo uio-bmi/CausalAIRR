@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import yaml
 
 from causal_airr_scripts.experiment3.SimConfig import SimConfig
@@ -45,3 +47,8 @@ def write_config(config: SimConfig, path):
 
     with open(path / 'config.yaml', 'w') as file:
         yaml.dump(all_config, file)
+
+
+def save_to_yaml(content: dict, path: Path):
+    with path.open('w') as file:
+        yaml.dump(content, file)
