@@ -109,6 +109,9 @@ class Experiment3:
                                         for repetition in range(self.sim_config.repetitions)])
 
         write_to_file(pd.DataFrame(all_metrics), setting_path / 'metrics.tsv')
+
+        logging.info(f"Finished run for implanting group: {impl_setting.to_dict()}, correct={self.get_folder_name_from_correction(correct)}")
+
         return setting_path
 
     def run_one_repetition(self, path: Path, impl_setting: ImplantingSetting, correct: bool, repetition_index: int) -> dict:
