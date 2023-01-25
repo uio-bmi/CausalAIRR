@@ -15,7 +15,7 @@ def main(namespace):
                     'batch0': ImplantingUnit(0.16, 3 / 84, 7 / 16, 0.25),
                     'batch1': ImplantingUnit(0.64, 3 / 4, 63 / 64, 0.75),
                     'batch_test': ImplantingUnit(0.4, 0.25, 0.875, batch_implanting_prob=0.5)},
-                   5000, namespace.result_path, namespace.num_processes)
+                   1000, namespace.result_path, namespace.num_processes)
 
 
 def run_one_config(proba_set, sequence_count, result_path, num_processes):

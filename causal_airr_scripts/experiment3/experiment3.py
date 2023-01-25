@@ -71,12 +71,12 @@ class Experiment3:
 
         setting_paths = []
 
-        res_path = self.run_for_impl_setup(PathBuilder.build(path / 'control'), self.sim_config.implanting_config.control, correct=None)
-        setting_paths.append(res_path)
-
         for correction in self.sim_config.batch_corrections:
             res_path = self.run_for_impl_setup(PathBuilder.build(path / 'batch'), self.sim_config.implanting_config.batch, correction)
             setting_paths.append(res_path)
+
+        res_path = self.run_for_impl_setup(PathBuilder.build(path / 'control'), self.sim_config.implanting_config.control, correct=None)
+        setting_paths.append(res_path)
 
         shutil.rmtree(path / 'cache')
 
@@ -210,7 +210,8 @@ class Experiment3:
         corrected_dataset = dataset.clone()
         meta_train_df = dataset.get_metadata([self.signal_name, 'batch'], return_df=True)
         meta_train_df[self.signal_name] = [1 if el == 'True' else 0 for el in meta_train_df['signal']]
-        meta_train_df['batch'] = [1 if el == '1' else 0 for el in meta_train_df['batch']]
+        meta_train_df['batch'] = [1 if el == 'True' else 0 for el in meta_train_df['batch']]
+        write_to_file(meta_train_df, path / 'correction_meta_overview.tsv')
 
         correction_coefficients = {"feature": [], "correction": [], "signal_contribution": []}
 
