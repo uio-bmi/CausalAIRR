@@ -9,3 +9,5 @@ plotly>=5.3.1
 graphviz
 PyYAML~=5.4.1
 scikit-learn~=1.0
+fisher~=0.1.9
+statsmodels

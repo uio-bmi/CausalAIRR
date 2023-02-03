@@ -1,6 +1,13 @@
+import logging
 from pathlib import Path
+import random
 from typing import List
 
+import numpy as np
+import pandas as pd
+from immuneML.data_model.receptor.RegionType import RegionType
+from immuneML.data_model.receptor.receptor_sequence.ReceptorSequence import ReceptorSequence
+from immuneML.data_model.receptor.receptor_sequence.SequenceMetadata import SequenceMetadata
 from immuneML.data_model.repertoire.Repertoire import Repertoire
 from immuneML.simulation.implants.Motif import Motif
 from immuneML.simulation.implants.Signal import Signal
@@ -9,6 +16,8 @@ from immuneML.simulation.sequence_implanting.GappedMotifImplanting import Gapped
 from immuneML.simulation.signal_implanting_strategy.HealthySequenceImplanting import HealthySequenceImplanting
 from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import ImplantingComputation
 from immuneML.util.PathBuilder import PathBuilder
+
+from causal_airr_scripts.experiment3.SimConfig import ImplantingUnit
 
 
 def make_immune_state_signals(signal_name: str = "immune_state") -> List[Signal]:
@@ -90,3 +99,46 @@ def make_repertoire_with_signal(repertoire: Repertoire, signal: Signal, result_p
     new_repertoire = signal.implant_to_repertoire(repertoire=repertoire, repertoire_implanting_rate=repertoire_implanting_rate, path=result_path)
     new_repertoire.metadata['filename'] = new_repertoire.data_filename.name
     return new_repertoire
+
+
+def make_sequence_with_signal(sequence, signal: Signal) -> str:
+    if isinstance(sequence, str):
+        seq = ReceptorSequence(amino_acid_sequence=sequence, metadata=SequenceMetadata(region_type=RegionType.IMGT_JUNCTION.name))
+    else:
+        seq = sequence
+
+    motif = random.choice(signal.motifs)
+
+    implanted_seq = signal.implanting_strategy.implant_in_sequence(seq, signal, motif=motif)
+
+    return implanted_seq.amino_acid_sequence
+
+
+def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_unit: ImplantingUnit):
+    if signal:
+        logging.info(f"Implanting for signal {signal.id} with probability {implanting_unit.label_implanting_prob}")
+        sequences[signal.id] = False
+        sequences[f'{signal.id}_implanted'] = False
+        seq_with_motif_count = round(implanting_unit.label_implanting_prob * sequences.shape[0])
+        logging.info(f"Sequence count where the motif will be implanted: {seq_with_motif_count}")
+        motif_indices = np.random.choice(np.arange(sequences.shape[0]), size=seq_with_motif_count, replace=False)
+
+        for index in motif_indices:
+            sequences.at[index, 'sequence_aa'] = make_sequence_with_signal(sequences.at[index, 'sequence_aa'], signal)
+            sequences.at[index, f'{signal.id}_implanted'] = True
+
+        seq_with_label_count = round(seq_with_motif_count * implanting_unit.label_given_motif_prob)
+        label_indices = np.random.choice(motif_indices, size=seq_with_label_count, replace=False)
+
+        sequences.loc[label_indices, signal.id] = True
+
+        seq_with_label_count = round((sequences.shape[0] - seq_with_motif_count) * implanting_unit.label_given_no_motif_prob)
+        label_indices = np.random.choice([i for i in np.arange(sequences.shape[0]) if i not in motif_indices], size=seq_with_label_count,
+                                         replace=False)
+        sequences.loc[label_indices, signal.id] = True
+
+        sequences = sequences.sample(frac=1)
+
+        logging.info(sequences.head(10))
+
+    return sequences

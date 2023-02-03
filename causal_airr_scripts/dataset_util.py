@@ -1,3 +1,4 @@
+import datetime
 import os
 import shutil
 from glob import glob
@@ -140,3 +141,22 @@ def get_simulation_stats(metadata_path: Path, columns: list, compute_correlation
             print("Exception occurred while computing Matthews correlation coefficient.")
 
     return output
+
+
+def write_to_file(df, path):
+    if path.is_file():
+        df.to_csv(path, sep='\t', index=None, mode='a', header=False)
+    else:
+        df.to_csv(path, sep="\t", index=None, header=True)
+
+
+def get_dataset_from_dataframe(sequences: pd.DataFrame, file_path: Path, col_mapping: dict = None, meta_col_mapping: dict = None):
+    col_mapping = {0: 'sequence_aas', 1: 'v_genes', 2: 'j_genes', 3: 'status'} if col_mapping is None else col_mapping
+    meta_col_mapping = {'status': 'status'} if meta_col_mapping is None else meta_col_mapping
+    sequences.to_csv(file_path, sep='\t', index=False)
+    return OLGAImport.import_dataset({
+        'path': file_path, 'is_repertoire': False, 'import_illegal_characters': False, 'import_empty_nt_sequences': True,
+        'import_empty_aa_sequences': False, 'separator': '\t', 'region_type': 'IMGT_JUNCTION', 'columns_to_load': list(col_mapping.keys()),
+        'column_mapping': col_mapping, "metadata_column_mapping": meta_col_mapping,
+        'result_path': setup_path(file_path.parent / 'imported_dataset')
+    }, f'seq_dataset_{datetime.datetime.now()}')
