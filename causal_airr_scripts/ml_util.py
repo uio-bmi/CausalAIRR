@@ -22,18 +22,18 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                 "logistic_regression": {
                     "LogisticRegression": {
                         "penalty": "l1",
-                        # "C": [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+                        "C": [0.001, 0.01, 0.1, 1, 10, 100, 1000],
                         "show_warnings": False
                     },
-                    # "model_selection_cv": True,
-                    # "model_selection_n_folds": 5
+                    "model_selection_cv": True,
+                    "model_selection_n_folds": 5
                 }
             },
             "reports": {
                 "coefficients": {
                     "Coefficients": {  # show top 25 logistic regression coefficients and what k-mers they correspond to
                         "coefs_to_plot": ['n_largest'],
-                        "n_largest": [25]
+                        "n_largest": [30]
                     }
                 },
                 "feature_comparison": {
@@ -62,8 +62,9 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                     }
                 },
                 "selection": {
-                    "split_strategy": "k_fold",
-                    "split_count": 2, # 5,
+                    "split_strategy": "random",
+                    "split_count": 1,
+                    "training_percentage": 0.7,
                     "reports": {
                         "models": ["coefficients"],
                         "encoding": ["feature_comparison"]
