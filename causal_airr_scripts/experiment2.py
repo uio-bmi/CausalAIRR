@@ -83,7 +83,7 @@ def make_graph(data_path, p_immune_state: float, p_hospital: float, immune_state
     repertoire_node = Node(name="repertoire", function=get_repertoire,
                            kwargs={"immune_state": immune_state_node, "experimental_protocol_id": experimental_protocol_node,
                                    "path": data_path / "train" if is_train else data_path / "test", "sequence_count": sequence_count,
-                                   "immune_state_signal": immune_state_signal, 'immune_state_implanting_rate': immune_state_implanting_rate,
+                                   "immune_signal": immune_state_signal, 'immune_state_implanting_rate': immune_state_implanting_rate,
                                    "protocol_implanting_rate": protocol_implanting_rate, "exp_protocol_signal_name": exp_protocol_signal_name})
 
     selection_node = Selection(name="S", function=get_selection, kwargs={"hospital": hospital_node, "immune_state": immune_state_node})

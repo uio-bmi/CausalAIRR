@@ -7,7 +7,7 @@ from sklearn.linear_model import Ridge, LinearRegression
 from causal_airr_scripts.dataset_util import setup_path
 from causal_airr_scripts.experiment3.SimConfig import SimConfig, ImplantingConfig, ImplantingSetting, ImplantingUnit, ImplantingGroup
 from causal_airr_scripts.experiment3.experiment3 import Experiment3
-from causal_airr_scripts.util import write_config
+from causal_airr_scripts.util import write_config, prepare_namespace
 
 
 def main(namespace):
@@ -42,16 +42,6 @@ def run_one_config(proba_set, sequence_count, result_path, num_processes):
 
     experiment = Experiment3(config, num_processes=num_processes)
     experiment.run(path)
-
-
-def prepare_namespace():
-    parser = argparse.ArgumentParser(description="CausalAIRR experiment 3")
-    parser.add_argument("result_path", help="Output directory path.")
-    parser.add_argument("num_processes", help="Number of processes to use for training logistic regression.", type=int)
-
-    namespace = parser.parse_args()
-    namespace.result_path = Path(namespace.result_path)
-    return namespace
 
 
 if __name__ == "__main__":

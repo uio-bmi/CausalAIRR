@@ -76,7 +76,7 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                 "refit_optimal_model": False,
                 "labels": ["immune_state"],
                 "optimization_metric": "balanced_accuracy",
-                "content": ['log_loss', 'auc']
+                "metrics": ['log_loss', 'auc']
             }
         }
     }

@@ -1,3 +1,4 @@
+import argparse
 from pathlib import Path
 
 import yaml
@@ -52,3 +53,13 @@ def write_config(config: SimConfig, path):
 def save_to_yaml(content: dict, path: Path):
     with path.open('w') as file:
         yaml.dump(content, file)
+
+
+def prepare_namespace():
+    parser = argparse.ArgumentParser(description="CausalAIRR experiments")
+    parser.add_argument("result_path", help="Output directory path.")
+    parser.add_argument("num_processes", help="Number of processes to use for training logistic regression.", type=int)
+
+    namespace = parser.parse_args()
+    namespace.result_path = Path(namespace.result_path)
+    return namespace

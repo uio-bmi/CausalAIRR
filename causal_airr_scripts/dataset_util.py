@@ -98,17 +98,17 @@ def make_AIRR_dataset(train_dataset: RepertoireDataset, test_dataset: Repertoire
     dataset = RepertoireDataset(labels=train_dataset.labels, repertoires=train_dataset.repertoires + test_dataset.repertoires,
                                 name='dataset', metadata_file=metadata_file)
 
-    AIRRExporter.export(dataset, path, RegionType.IMGT_CDR3)
+    AIRRExporter.export(dataset, path, 1)
 
     shutil.rmtree(tmp_path)
 
     return dataset
 
 
-def setup_path(path) -> Path:
+def setup_path(path, remove_if_exists: bool = True) -> Path:
     path_obj = Path(path)
 
-    if path_obj.is_dir():
+    if path_obj.is_dir() and remove_if_exists:
         print(f"Removing {path_obj}...")
         shutil.rmtree(path_obj)
 
