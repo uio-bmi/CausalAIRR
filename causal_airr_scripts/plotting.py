@@ -46,7 +46,7 @@ def plot_error_rate_box(data: dict, result_path):
 
     figure.update_layout(yaxis={"title": "balanced error rate", 'color': 'black'}, template='plotly_white', font_size=15, font_color='black')
     figure.update_xaxes(showline=True, linewidth=1, linecolor='black')
-    figure.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black', range=[])
+    figure.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black')
 
     figure.write_html(result_path)
     return figure

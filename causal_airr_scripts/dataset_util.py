@@ -93,7 +93,7 @@ def make_AIRR_dataset(train_dataset: RepertoireDataset, test_dataset: Repertoire
     assert np.array_equal(train_metadata.columns, test_metadata.columns), f"Train and test metadata columns don't match."
 
     metadata_file = tmp_path / 'metadata.csv'
-    train_metadata.append(test_metadata).to_csv(metadata_file, index=False)
+    pd.concat([train_metadata, test_metadata], axis=0).to_csv(metadata_file, index=False)
 
     dataset = RepertoireDataset(labels=train_dataset.labels, repertoires=train_dataset.repertoires + test_dataset.repertoires,
                                 name='dataset', metadata_file=metadata_file)
