@@ -1,3 +1,5 @@
+import os
+import shutil
 from pathlib import Path
 from typing import List
 
@@ -100,7 +102,16 @@ def simulate_dataset(train_example_count: int, test_example_count, data_path: Pa
 
     # merge datasets (but the distinction between train and test will be kept)
 
-    dataset = make_AIRR_dataset(train_dataset, test_dataset, data_path / 'full_dataset')
+    make_AIRR_dataset(train_dataset, test_dataset, data_path / 'full_dataset')
+
+    # remove tmp files
+
+    shutil.move(str(data_path / f"train/experiment{experiment_name}_train_metadata.csv"), data_path)
+    shutil.move(str(data_path / f"test/experiment{experiment_name}_test_metadata.csv"), data_path)
+
+    shutil.rmtree(data_path / 'train')
+    shutil.rmtree(data_path / 'test')
+    shutil.rmtree(data_path / 'naive')
 
 
 def make_confounder_node(confounder_p):

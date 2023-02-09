@@ -50,17 +50,18 @@ def make_olga_repertoire(sequence_count: int, path: Path) -> Repertoire:
     olga_path = PathBuilder.build(path / 'olga')
     log_path = olga_path / "log.txt"
 
-    seed = len(glob(str(olga_path / "*.tsv"))) + 1
+    rep_id = len(glob(str(olga_path / "*.tsv"))) + 1
 
-    make_default_olga_repertoire(olga_path, sequence_count, seed, log_path)
+    make_default_olga_repertoire(olga_path, sequence_count, rep_id, log_path)
 
-    repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{seed}.tsv"), result_path=path / "immuneML_naive")
+    repertoire = load_olga_repertoire(filepath=Path(f"{olga_path}/{rep_id}.tsv"), result_path=path / "immuneML_naive")
+    os.remove(Path(f"{olga_path}/{rep_id}.tsv"))
 
     return repertoire
 
 
-def make_default_olga_repertoire(path: Path, sequence_count: int, seed: int, log_path: Path):
-    os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} --seed={seed} -o {path}/{seed}.tsv >> {log_path}")
+def make_default_olga_repertoire(path: Path, sequence_count: int, rep_id: int, log_path: Path):
+    os.system(f"olga-generate_sequences --humanTRB -n {sequence_count} -o {path}/{rep_id}.tsv >> {log_path}")
 
 
 def make_dataset(repertoire_paths: List[Path], path: Path, dataset_name: str, signal_names: List[str]):

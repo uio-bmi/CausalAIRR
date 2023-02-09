@@ -22,11 +22,11 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                 "logistic_regression": {
                     "LogisticRegression": {
                         "penalty": "l1",
-                        "C": [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+                        # "C": [0.001, 0.01, 0.1, 1, 10, 100, 1000],
                         "show_warnings": False
                     },
-                    "model_selection_cv": True,
-                    "model_selection_n_folds": 5
+                    # "model_selection_cv": True,
+                    # "model_selection_n_folds": 5
                 }
             },
             "reports": {
@@ -53,8 +53,8 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                     "split_strategy": "manual",
                     "split_count": 1,
                     "manual_config": {
-                        "train_metadata_path": str(data_path / f"train/experiment{experiment_name}_train_metadata.csv"),
-                        "test_metadata_path": str(data_path / f"test/experiment{experiment_name}_test_metadata.csv")
+                        "train_metadata_path": str(data_path / f"experiment{experiment_name}_train_metadata.csv"),
+                        "test_metadata_path": str(data_path / f"experiment{experiment_name}_test_metadata.csv")
                     },
                     "reports": {
                         "models": ["coefficients"],
@@ -63,7 +63,7 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                 },
                 "selection": {
                     "split_strategy": "k_fold",
-                    "split_count": 5,
+                    "split_count": 2, # 5,
                     "reports": {
                         "models": ["coefficients"],
                         "encoding": ["feature_comparison"]
