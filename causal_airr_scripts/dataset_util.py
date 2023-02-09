@@ -4,19 +4,18 @@ import shutil
 from glob import glob
 from pathlib import Path
 from typing import List
-import pandas as pd
-from sklearn.metrics import matthews_corrcoef
 
 import numpy as np
+import pandas as pd
 from immuneML.IO.dataset_export.AIRRExporter import AIRRExporter
 from immuneML.IO.dataset_import.OLGAImport import OLGAImport
 from immuneML.data_model.dataset.RepertoireDataset import RepertoireDataset
-from immuneML.data_model.receptor.RegionType import RegionType
 from immuneML.data_model.repertoire.Repertoire import Repertoire
 from immuneML.dsl.DefaultParamsLoader import DefaultParamsLoader
 from immuneML.util.ImportHelper import ImportHelper
 from immuneML.util.PathBuilder import PathBuilder
 from pandas import Series, DataFrame, read_csv
+from sklearn.metrics import matthews_corrcoef
 
 
 def load_olga_repertoire(filepath: Path, result_path: Path, additional_metadata: dict = None):

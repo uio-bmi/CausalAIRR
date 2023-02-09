@@ -9,29 +9,27 @@ from immuneML.app.ImmuneMLApp import ImmuneMLApp
 from causal_airr_scripts.dataset_util import setup_path
 from causal_airr_scripts.implanting import make_signal
 from causal_airr_scripts.ml_util import define_specs
-from causal_airr_scripts.experiment1.exp1_util import simulate_dataset
+from causal_airr_scripts.experiment2.exp2_util import simulate_dataset
 
 
 @dataclass
-class Exp1Config:
-    immune_state_p_conf1: float
-    immune_state_p_conf2: float
-    confounder_p_train: float
-    confounder_p_test: float
+class Exp2Config:
+    p_immune_state: float
+    p_hospital: float
     immune_state_implanting_rate: float
-    confounder_implanting_rate: float
+    protocol_implanting_rate: float
     immune_signal: dict
-    confounder_signal: dict
+    protocol_signal_name: str
     sequence_count: int
     train_example_count: int
     test_example_count: int
 
 
 @dataclass
-class Experiment1:
+class Experiment2:
     name: str
     result_path: Path
-    config: Exp1Config
+    config: Exp2Config
     repetitions: int
     num_processes: int
 
@@ -47,11 +45,10 @@ class Experiment1:
         ml_path = setup_path(path / 'ml_result')
 
         simulate_dataset(train_example_count=self.config.train_example_count, test_example_count=self.config.test_example_count,
-                         data_path=data_path, confounder_p_train=self.config.confounder_p_train, sequence_count=self.config.sequence_count,
-                         confounder_p_test=self.config.confounder_p_test, immune_state_p_conf1=self.config.immune_state_p_conf1,
-                         immune_state_p_conf2=self.config.immune_state_p_conf2, immune_state_implanting_rate=self.config.immune_state_implanting_rate,
-                         confounder_implanting_rate=self.config.confounder_implanting_rate, experiment_name=self.name,
-                         confounder_signal=make_signal(**self.config.confounder_signal), immune_signal=make_signal(**self.config.immune_signal))
+                         data_path=data_path, sequence_count=self.config.sequence_count, experiment_name=self.name, p_hospital=self.config.p_hospital,
+                         p_immune_state=self.config.p_immune_state, immune_signal=make_signal(**self.config.immune_signal),
+                         protocol_signal_name=self.config.protocol_signal_name, immune_state_implanting_rate=self.config.immune_state_implanting_rate,
+                         protocol_implanting_rate=self.config.protocol_implanting_rate)
 
         specs_path = self._write_ml_specs(data_path, ml_path)
 

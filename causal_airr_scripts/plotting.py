@@ -24,7 +24,7 @@ def plot_balanced_error_rate(iml_results: list, result_path, show_figure: bool=T
         test.append(1 - train_state.optimal_hp_items['immune_state'].performance['balanced_accuracy'])
 
     performances = {"validation": validation, "test": test}
-    save_to_yaml(performances, result_path / 'bacc_performances.yaml')
+    save_to_yaml(performances, result_path / 'balanced_error_rate_performances.yaml')
 
     figure = plot_error_rate_box(performances, result_path / "validation_vs_test_performance_balanced_error_rate.html")
     if show_figure:

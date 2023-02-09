@@ -17,8 +17,6 @@ from immuneML.simulation.signal_implanting_strategy.HealthySequenceImplanting im
 from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import ImplantingComputation
 from immuneML.util.PathBuilder import PathBuilder
 
-from causal_airr_scripts.experiment3.SimConfig import ImplantingUnit
-
 
 def make_immune_state_signals(signal_name: str = "immune_state") -> List[Signal]:
     motif1 = Motif(identifier="motif1", seed="EQY",
@@ -73,7 +71,7 @@ def make_exp_protocol_signal(protocol_id: int = 1, signal_name: str = "experimen
     elif protocol_id == 2:
         seed = "EAF"
     else:
-        raise ValueError("Protocol id can only be 1, 2 or 3 for now.")
+        raise ValueError("Protocol id can only be 1 or 2 for now.")
 
     motif1 = Motif(identifier="motif1", seed=seed,
                    instantiation=GappedKmerInstantiation(hamming_distance_probabilities={0: 1.}))
@@ -114,7 +112,7 @@ def make_sequence_with_signal(sequence, signal: Signal) -> str:
     return implanted_seq.amino_acid_sequence
 
 
-def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_unit: ImplantingUnit):
+def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_unit):
     if signal:
         logging.info(f"Implanting for signal {signal.id} with probability {implanting_unit.label_implanting_prob}")
         sequences[signal.id] = False
@@ -142,3 +140,14 @@ def implant_in_sequences(sequences: pd.DataFrame, signal: Signal, implanting_uni
         logging.info(sequences.head(10))
 
     return sequences
+
+
+def make_signal(motif_seeds: List[str], seq_position_weights: dict = None, hamming_dist_weights: dict = None, position_weights: dict = None,
+                signal_name: str = "signal"):
+    return Signal(signal_name, motifs=[Motif(f"m{i}", GappedKmerInstantiation(hamming_distance_probabilities=hamming_dist_weights,
+                                                                              position_weights=position_weights), seed)
+                                       for i, seed in enumerate(motif_seeds)],
+                  implanting_strategy=HealthySequenceImplanting(implanting=GappedMotifImplanting(),
+                                                                implanting_computation=ImplantingComputation.ROUND,
+                                                                sequence_position_weights=seq_position_weights))
+

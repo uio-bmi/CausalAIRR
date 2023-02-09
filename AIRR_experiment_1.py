@@ -19,7 +19,7 @@ def main(namespace):
                     config=Exp1Config(train_example_count=200, test_example_count=100, immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
                                       confounder_p_train=0.5, confounder_p_test=0.5, immune_state_implanting_rate=0.02,
                                       confounder_implanting_rate=0.2,
-                                      sequence_count=100, immune_signal=immune_signal, confounder_signal=confounder_signal)),
+                                      sequence_count=500, immune_signal=immune_signal, confounder_signal=confounder_signal)),
         Experiment1("1b", setup_path(result_path / '1b'), repetitions=5, num_processes=namespace.num_processes,
                     config=Exp1Config(train_example_count=200, test_example_count=100, immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
                                       confounder_p_train=0.4, confounder_p_test=0.5, immune_state_implanting_rate=0.02,

@@ -9,6 +9,8 @@ from immuneML.simulation.sequence_implanting.GappedMotifImplanting import Gapped
 from immuneML.simulation.signal_implanting_strategy.HealthySequenceImplanting import HealthySequenceImplanting
 from immuneML.simulation.signal_implanting_strategy.ImplantingComputation import ImplantingComputation
 
+from causal_airr_scripts.implanting import make_signal
+
 
 @dataclass
 class ImplantingUnit:
@@ -88,13 +90,3 @@ class SimConfig:
                              position_weights=list(config['signal']['motifs'].values())[0]['position_weights'])
 
         return SimConfig(**{**config, **{'signal': signal, 'implanting_config': ImplantingConfig.from_dict(config['implanting_config'])}})
-
-
-def make_signal(motif_seeds: List[str], seq_position_weights: dict = None, hamming_dist_weights: dict = None, position_weights: dict = None,
-                signal_name: str = "signal"):
-    return Signal(signal_name, motifs=[Motif(f"m{i}", GappedKmerInstantiation(hamming_distance_probabilities=hamming_dist_weights,
-                                                                              position_weights=position_weights), seed)
-                                       for i, seed in enumerate(motif_seeds)],
-                  implanting_strategy=HealthySequenceImplanting(implanting=GappedMotifImplanting(),
-                                                                implanting_computation=ImplantingComputation.ROUND,
-                                                                sequence_position_weights=seq_position_weights))
