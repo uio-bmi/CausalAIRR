@@ -19,9 +19,9 @@ def plot_balanced_error_rate(iml_results: list, result_path, show_figure: bool=T
         for hp_setting, hp_item in selection_state.hp_items.items():
             if hp_setting == selection_state.optimal_hp_setting.get_key():
                 for item in hp_item:
-                    validation.append(1 - item.performance['balanced_accuracy'])
+                    validation.append(float(1 - item.performance['balanced_accuracy']))
 
-        test.append(1 - train_state.optimal_hp_items['immune_state'].performance['balanced_accuracy'])
+        test.append(float(1 - train_state.optimal_hp_items['immune_state'].performance['balanced_accuracy']))
 
     performances = {"validation": validation, "test": test}
     save_to_yaml(performances, result_path / 'balanced_error_rate_performances.yaml')

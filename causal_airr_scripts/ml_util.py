@@ -31,7 +31,7 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
             },
             "reports": {
                 "coefficients": {
-                    "Coefficients": {  # show top 25 logistic regression coefficients and what k-mers they correspond to
+                    "Coefficients": {  # show top 30 logistic regression coefficients and what k-mers they correspond to
                         "coefs_to_plot": ['n_largest'],
                         "n_largest": [30]
                     }
@@ -62,13 +62,8 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                     }
                 },
                 "selection": {
-                    "split_strategy": "random",
-                    "split_count": 1,
-                    "training_percentage": 0.7,
-                    "reports": {
-                        "models": ["coefficients"],
-                        "encoding": ["feature_comparison"]
-                    }
+                    "split_strategy": "k_fold",
+                    "split_count": 5
                 },
                 "settings": [
                     {"encoding": "kmer_frequency", "ml_method": "logistic_regression"}
