@@ -13,7 +13,7 @@ from causal_airr_scripts.implanting import make_repertoire_with_signal, make_rep
 
 
 def get_immune_state(confounder: str, p_conf1: float, p_conf2: float) -> bool:
-    state = bool(np.random.binomial(n=1, p=p_conf2) if confounder == "C1" else np.random.binomial(n=1, p=p_conf1))
+    state = bool(np.random.binomial(n=1, p=p_conf1) if confounder == "C1" else np.random.binomial(n=1, p=p_conf2))
     return state
 
 
