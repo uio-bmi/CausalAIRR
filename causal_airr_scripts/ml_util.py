@@ -63,8 +63,9 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                     }
                 },
                 "selection": {
-                    "split_strategy": "k_fold",
-                    "split_count": 5
+                    "split_strategy": "random",
+                    "split_count": 1,
+                    "training_percentage": 0.5
                 },
                 "settings": [
                     {"encoding": "kmer_frequency", "ml_method": "logistic_regression"}

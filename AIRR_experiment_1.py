@@ -15,28 +15,28 @@ def main(namespace):
                              signal_name='confounder_signal')
 
     sequence_count = 500
-    train_example_count = 200
-    test_example_count = 100
-    repetitions = 5
+    train_example_count = 500
+    test_example_count = 500
+    repetitions = 10
 
     experiments = [
-        Experiment1("1a", setup_path(result_path / '1a'), repetitions=repetitions, num_processes=namespace.num_processes,
-                    config=Exp1Config(train_example_count=train_example_count, test_example_count=test_example_count,
-                                      immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
-                                      confounder_p_train=0.8, confounder_p_test=0.8,
-                                      immune_state_implanting_rate=0.02, confounder_implanting_rate=0.2,
-                                      sequence_count=sequence_count, immune_signal=immune_signal, confounder_signal=confounder_signal)),
-        Experiment1("1b", setup_path(result_path / '1b'), repetitions=repetitions, num_processes=namespace.num_processes,
-                    config=Exp1Config(train_example_count=train_example_count, test_example_count=test_example_count,
-                                      immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
-                                      confounder_p_train=0.8, confounder_p_test=0.6,
-                                      immune_state_implanting_rate=0.02, confounder_implanting_rate=0.2,
-                                      sequence_count=sequence_count, immune_signal=immune_signal, confounder_signal=confounder_signal)),
+        # Experiment1("1a", setup_path(result_path / '1a'), repetitions=repetitions, num_processes=namespace.num_processes,
+        #             config=Exp1Config(train_example_count=train_example_count, test_example_count=test_example_count,
+        #                               immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
+        #                               confounder_p_train=0.8, confounder_p_test=0.8,
+        #                               immune_state_implanting_rate=0.02, confounder_implanting_rate=0.2,
+        #                               sequence_count=sequence_count, immune_signal=immune_signal, confounder_signal=confounder_signal)),
+        # Experiment1("1b", setup_path(result_path / '1b'), repetitions=repetitions, num_processes=namespace.num_processes,
+        #             config=Exp1Config(train_example_count=train_example_count, test_example_count=test_example_count,
+        #                               immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
+        #                               confounder_p_train=0.8, confounder_p_test=0.6,
+        #                               immune_state_implanting_rate=0.02, confounder_implanting_rate=0.2,
+        #                               sequence_count=sequence_count, immune_signal=immune_signal, confounder_signal=confounder_signal)),
         Experiment1("1c", setup_path(result_path / '1c'), repetitions=repetitions, num_processes=namespace.num_processes,
                     config=Exp1Config(train_example_count=train_example_count, test_example_count=test_example_count,
                                       immune_state_p_conf1=0.9, immune_state_p_conf2=0.1,
                                       confounder_p_train=0.8, confounder_p_test=0.2,
-                                      immune_state_implanting_rate=0.02, confounder_implanting_rate=0.2,
+                                      immune_state_implanting_rate=0.01, confounder_implanting_rate=0.2,
                                       sequence_count=sequence_count, immune_signal=immune_signal, confounder_signal=confounder_signal))
     ]
 

@@ -1,12 +1,10 @@
-import os
 import shutil
 from pathlib import Path
-from typing import List
 
 import numpy as np
+from dagsim.base import Graph, Node, Selection
 from immuneML.simulation.implants.Signal import Signal
 from immuneML.util.PathBuilder import PathBuilder
-from dagsim.base import Graph, Node, Selection
 
 from causal_airr_scripts.dataset_util import make_olga_repertoire, make_dataset, make_AIRR_dataset
 from causal_airr_scripts.implanting import make_repertoire_with_signal, make_repertoire_without_signal
