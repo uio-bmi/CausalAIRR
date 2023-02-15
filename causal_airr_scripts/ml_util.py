@@ -9,8 +9,7 @@ def define_specs(data_path: Path, experiment_name: str) -> dict:
                     "format": 'AIRR',
                     "params": {
                         "path": str(data_path / 'full_dataset'),
-                        "metadata_file": str(data_path / 'full_dataset/metadata.csv'),
-                        "region_type": "IMGT_JUNCTION"
+                        "metadata_file": str(data_path / 'full_dataset/metadata.csv')
                     }
                 }
             },
