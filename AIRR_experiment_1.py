@@ -17,7 +17,7 @@ def main(namespace):
     sequence_count = 500
     train_example_count = 500
     test_example_count = 500
-    repetitions = 10
+    repetitions = 30
 
     experiments = [
         # Experiment1("1a", setup_path(result_path / '1a'), repetitions=repetitions, num_processes=namespace.num_processes,
