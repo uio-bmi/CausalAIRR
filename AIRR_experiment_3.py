@@ -10,8 +10,8 @@ from causal_airr_scripts.util import write_config, prepare_namespace
 
 def main(namespace):
     run_one_config({'control': ImplantingUnit(0.4, 0.25, 0.875, 0), "name": 'full_run',
-                    'batch0': ImplantingUnit(0.16, 3 / 84, 7 / 16, 0.25),
-                    'batch1': ImplantingUnit(0.64, 3 / 4, 63 / 64, 0.75),
+                    'batch0': ImplantingUnit(0.16, 3 / 84, 7 / 16, 0.15),
+                    'batch1': ImplantingUnit(0.64, 3 / 4, 63 / 64, 0.85),
                     'batch_test': ImplantingUnit(0.4, 0.25, 0.875, batch_implanting_prob=0.5)},
                    5000, namespace.result_path, namespace.num_processes)
 
