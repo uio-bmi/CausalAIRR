@@ -10,6 +10,7 @@ from causal_airr_scripts.dataset_util import setup_path
 from causal_airr_scripts.implanting import make_signal
 from causal_airr_scripts.ml_util import define_specs
 from causal_airr_scripts.experiment1.exp1_util import simulate_dataset
+from causal_airr_scripts.util import save_to_yaml
 
 
 @dataclass
@@ -36,10 +37,16 @@ class Experiment1:
     num_processes: int
 
     def run(self) -> list:
+
+        self.write_config()
+
         with Pool(self.num_processes) as pool:
             results = pool.map(self._run_repetition, list(range(1, self.repetitions + 1)))
 
         return list(results)
+
+    def write_config(self):
+        save_to_yaml(vars(self.config), self.result_path / f'{self.name}_specs.yaml')
 
     def _run_repetition(self, repetition: int = 1):
         path = setup_path(self.result_path / f'repetition_{repetition}')
