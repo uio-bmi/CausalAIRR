@@ -1,3 +1,5 @@
+import itertools
+
 import plotly.graph_objects as go
 import plotly.express as px
 import numpy as np
@@ -50,3 +52,31 @@ def plot_error_rate_box(data: dict, result_path):
 
     figure.write_html(result_path)
     return figure
+
+
+def plot_multiple_boxplots(datasets, result_path, decimal_count=3):
+
+    fig = go.Figure()
+    repetitions = len(list(datasets.values())[0]['validation'])
+
+    for index, group in enumerate(['validation', 'test']):
+        y = list(itertools.chain.from_iterable(dataset[group] for dataset in datasets.values()))
+        fig.add_trace(go.Box(y=y,
+                             x=list(itertools.chain.from_iterable([[exp_name] * repetitions for exp_name in datasets.keys()])),
+                             name=group, marker_color=px.colors.qualitative.Dark2[index],
+                             boxpoints='all', text=np.median(y).round(decimal_count), pointpos=0, opacity=0.5,
+                             jitter=0.2))
+        for exp_name in datasets.keys():
+            annotation_y = np.median(datasets[exp_name][group])
+            fig.add_annotation(x=exp_name, y=annotation_y, text=str(annotation_y.astype(float).round(decimal_count)), showarrow=False,
+                               yshift=10, xshift=75 if index else -75, font_color='black')
+
+    fig.update_layout(yaxis={"title": "balanced error rate", 'color': 'black'}, template='plotly_white', font_size=15, font_color='black',
+                      boxmode='group')
+    fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black')
+
+    fig.write_html(result_path)
+    return fig
+
+
