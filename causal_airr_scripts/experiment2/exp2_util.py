@@ -125,6 +125,6 @@ def simulate_dataset(data_path: Path, train_example_count: int, test_example_cou
     shutil.move(str(data_path / f"train/experiment{experiment_name}_train_metadata.csv"), data_path)
     shutil.move(str(data_path / f"test/experiment{experiment_name}_test_metadata.csv"), data_path)
 
-    shutil.rmtree(data_path / 'train')
-    shutil.rmtree(data_path / 'test')
-    shutil.rmtree(data_path / 'naive')
+    shutil.rmtree(data_path / 'train', ignore_errors=True)
+    shutil.rmtree(data_path / 'test', ignore_errors=True)
+    shutil.rmtree(data_path / 'naive', ignore_errors=True)

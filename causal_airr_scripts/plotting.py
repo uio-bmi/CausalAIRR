@@ -69,12 +69,12 @@ def plot_multiple_boxplots(datasets, result_path, decimal_count=3):
         for exp_name in datasets.keys():
             annotation_y = np.median(datasets[exp_name][group])
             fig.add_annotation(x=exp_name, y=annotation_y, text=str(annotation_y.astype(float).round(decimal_count)), showarrow=False,
-                               yshift=10, xshift=75 if index else -75, font_color='black')
+                               yshift=10, xshift=65 if index else -65, font_color='black')
 
-    fig.update_layout(yaxis={"title": "balanced error rate", 'color': 'black'}, template='plotly_white', font_size=15, font_color='black',
-                      boxmode='group')
-    fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
-    fig.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black')
+    fig.update_layout(yaxis={"title": "balanced error rate", 'color': 'black', 'tickfont': {'size': 20}}, template='plotly_white', font_size=20,
+                      font_color='black', boxmode='group')
+    fig.update_xaxes(showline=True, linewidth=1, linecolor='black', color='black', tickfont={'size': 20})
+    fig.update_yaxes(showline=True, linewidth=1, linecolor='black', color='black', tickfont={'size': 20})
 
     fig.write_html(result_path)
     return fig

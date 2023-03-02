@@ -11,9 +11,9 @@ def main():
     """
     datasets = {}
     for path, name in zip(
-        [Path("./results_exp1/2023-03-01_15:54:06.008778/1a/balanced_error_rate_performances.yaml"),
-         Path("./results_exp1/2023-03-01_15:54:06.008778/1b/balanced_error_rate_performances.yaml"),
-         Path("./results_exp1/2023-03-01_15:54:06.008778/1c/balanced_error_rate_performances.yaml")],
+        [Path("results_exp1/2023-03-01_15:54:06.008778/1a/balanced_error_rate_performances.yaml"),
+         Path("results_exp1/2023-03-01_15:54:06.008778/1b/balanced_error_rate_performances.yaml"),
+         Path("results_exp1/2023-03-01_15:54:06.008778/1c/balanced_error_rate_performances.yaml")],
         ['stable confounder', 'minor changes in confounder', 'major changes in confounder']):
         with path.open('r') as file:
             datasets[name] = yaml.safe_load(file)
