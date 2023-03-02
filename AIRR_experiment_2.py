@@ -13,11 +13,11 @@ def main(namespace):
                          position_weights={1: 1.}, signal_name="immune_state")
 
     experiments = [
-        Experiment2("2a", setup_path(result_path / '2a'), repetitions=5, num_processes=namespace.num_processes,
+        Experiment2("2a", setup_path(result_path / '2a'), repetitions=30, num_processes=namespace.num_processes,
                     config=Exp2Config(train_example_count=200, test_example_count=100, p_immune_state=0.5, p_hospital=0.5,
                                       immune_state_implanting_rate=0.01, sequence_count=500, immune_signal=immune_signal,
                                       protocol_implanting_rate=0.04, protocol_signal_name='protocol')),
-        Experiment2("2b", setup_path(result_path / '2b'), repetitions=5, num_processes=namespace.num_processes,
+        Experiment2("2b", setup_path(result_path / '2b'), repetitions=30, num_processes=namespace.num_processes,
                     config=Exp2Config(train_example_count=200, test_example_count=100, p_immune_state=0.5, p_hospital=0.5,
                                       immune_state_implanting_rate=0.0, sequence_count=500, immune_signal=immune_signal,
                                       protocol_implanting_rate=0.04, protocol_signal_name='protocol'))
