@@ -1,7 +1,5 @@
 # Improving generalization of machine learning-identified biomarkers with causal modeling: an investigation into immune receptor diagnostics 
 
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/uio-bmi/CausalAIRR/HEAD)
-
 ## Experiment 1: Confounder influence on the ML performance
 
 In this experiment, the causal graph consists of three nodes: the immune state, AIRR, the confounder and the selection node. The selection node was 
