@@ -70,7 +70,8 @@ exist in the training data but not removed and (3) where batch effects exist in 
 independent datasets in each scenario to provide bounds for the performance metric that we computed. We assessed the accuracy of the statistical testing 
 procedure in identifying the true positives and rejecting the true negatives. In addition to the findings presented in the original manuscript, all the 
 supplementary results of this part of the experiment were deposited in Zenodo database: https://zenodo.org/record/7727894. Notably, the study design 
-settings such as the degree of correlation between batches and biological condition, the magnitude of batch and biological effects and so on can impact the 
+settings such as the degree of correlation between batches and biological condition, the magnitude of batch and biological effects and so on can impact the
+performance of the predictive models.
 
 
 # Preprint

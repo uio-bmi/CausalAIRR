@@ -14,7 +14,8 @@ def make_fig_5d(summary_file: str, result_path: str, settings_name_mapping: dict
     fig = go.Figure()
     xshift = [-73, 0, 73]
 
-    x = list(itertools.chain.from_iterable([[overlap for _ in range(repetitions)] for overlap in overlaps]))
+    mapped_overlap_names = [o.replace("_", " ") if o != 'overlap_0' else 'no overlap' for o in overlaps]
+    x = list(itertools.chain.from_iterable([[overlap for _ in range(repetitions)] for overlap in mapped_overlap_names]))
 
     index = 0
 
@@ -25,8 +26,8 @@ def make_fig_5d(summary_file: str, result_path: str, settings_name_mapping: dict
         fig.add_trace(go.Box(y=y, x=x, name=new_setting_name, boxpoints='all', pointpos=0, opacity=0.7, jitter=0.2,
                              marker_color=px.colors.qualitative.Dark2[index]))
 
-        for overlap in overlaps:
-            annotation_y = np.median(setting_df[overlap].values).astype(int)
+        for overlap_index, overlap in enumerate(mapped_overlap_names):
+            annotation_y = np.median(setting_df[overlaps[overlap_index]].values).astype(int)
             fig.add_annotation(x=overlap, y=annotation_y, text=str(annotation_y), showarrow=False, yshift=15, font_color='black',
                                xshift=xshift[index])
 
@@ -139,11 +140,11 @@ if __name__ == "__main__":
         'no_batch_effects': 'control'
     }
 
-    make_figure_5a("transcriptomics_results/performance_metrics_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5a.html",
-                   mapping_transcriptomic_setting_names)
-    make_figure_5b("transcriptomics_results/nonzero_coef_stats_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5b.html",
-                   mapping_transcriptomic_setting_names)
-    make_figure_5c("AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_metrics.tsv", "./exp3_fig5c.html",
-                   mapping_setting_names)
+    # make_figure_5a("transcriptomics_results/performance_metrics_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5a.html",
+    #                mapping_transcriptomic_setting_names)
+    # make_figure_5b("transcriptomics_results/nonzero_coef_stats_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5b.html",
+    #                mapping_transcriptomic_setting_names)
+    # make_figure_5c("AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_metrics.tsv", "./exp3_fig5c.html",
+    #                mapping_setting_names)
     make_fig_5d("AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_enriched_kmers.tsv", "./exp3_fig5d.html",
                 mapping_setting_names)
