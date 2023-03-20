@@ -1,0 +1,16 @@
+specificity	sensitivity	balanced_accuracy	auc	repetition	setting
+0.5992	0.6592	0.6292	0.6292	1	batch_no_correction
+0.61	0.658	0.634	0.634	2	batch_no_correction
+0.6236	0.6512	0.6374	0.6374	3	batch_no_correction
+0.6132	0.6396	0.6264	0.6264	4	batch_no_correction
+0.6304	0.656	0.6432	0.6432000000000001	5	batch_no_correction
+0.8672	0.484	0.6756	0.6756	1	batch_linear_reg
+0.8504	0.486	0.6682	0.6682	2	batch_linear_reg
+0.8712	0.4268	0.649	0.649	3	batch_linear_reg
+0.8636	0.4592	0.6614	0.6614000000000001	4	batch_linear_reg
+0.8612	0.4648	0.663	0.6629999999999999	5	batch_linear_reg
+0.7216	0.6848	0.7032	0.7032	1	control_no_correction
+0.7276	0.686	0.7068000000000001	0.7068	2	control_no_correction
+0.714	0.6848	0.6994	0.6994	3	control_no_correction
+0.7284	0.6744	0.7014	0.7013999999999999	4	control_no_correction
+0.7236	0.6712	0.6974	0.6974	5	control_no_correction
