@@ -11,13 +11,13 @@ def main():
     """
     datasets = {}
     for path, name in zip(
-        [Path("../../results_exp2/2023-03-02_17:41:49.793863/2a/balanced_error_rate_performances.yaml"),
-         Path("../../results_exp2/2023-03-02_17:41:49.793863/2b/balanced_error_rate_performances.yaml")],
+        [Path("results_exp2/2023-03-02_17:41:49.793863/2a/balanced_error_rate_performances.yaml"),
+         Path("results_exp2/2023-03-02_17:41:49.793863/2b/balanced_error_rate_performances.yaml")],
         ['selection bias in validation, but not in test', 'only spurious correlation in validation (no immune signal)']):
         with path.open('r') as file:
             datasets[name] = yaml.safe_load(file)
 
-    plot_multiple_boxplots(datasets, result_path="./exp2.html")
+    plot_multiple_boxplots(datasets, result_path="./exp2.html", decimal_count=2)
 
 
 if __name__ == '__main__':

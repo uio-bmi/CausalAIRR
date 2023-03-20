@@ -140,11 +140,11 @@ if __name__ == "__main__":
         'no_batch_effects': 'control'
     }
 
-    # make_figure_5a("transcriptomics_results/performance_metrics_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5a.html",
-    #                mapping_transcriptomic_setting_names)
-    # make_figure_5b("transcriptomics_results/nonzero_coef_stats_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5b.html",
-    #                mapping_transcriptomic_setting_names)
-    # make_figure_5c("AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_metrics.tsv", "./exp3_fig5c.html",
-    #                mapping_setting_names)
-    make_fig_5d("AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_enriched_kmers.tsv", "./exp3_fig5d.html",
+    make_figure_5a("results_exp3/transcriptomics_results/performance_metrics_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5a.html",
+                   mapping_transcriptomic_setting_names)
+    make_figure_5b("results_exp3/transcriptomics_results/nonzero_coef_stats_causalAIRR_transcriptomics_experiment_13032023.tsv", "./exp3_fig5b.html",
+                   mapping_transcriptomic_setting_names)
+    make_figure_5c("results_exp3/AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_metrics.tsv", "./exp3_fig5c.html",
+                   mapping_setting_names)
+    make_fig_5d("results_exp3/AIRR_classification_setup_full_run_seqcount_5000_2023-02-21 17:46:40.131096/summary_enriched_kmers.tsv", "./exp3_fig5d.html",
                 mapping_setting_names)

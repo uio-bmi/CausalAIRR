@@ -18,7 +18,7 @@ def main():
         with path.open('r') as file:
             datasets[name] = yaml.safe_load(file)
 
-    plot_multiple_boxplots(datasets, result_path="./exp1.html")
+    plot_multiple_boxplots(datasets, result_path="./exp1.html", decimal_count=2)
 
 
 if __name__ == '__main__':
