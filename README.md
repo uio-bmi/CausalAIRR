@@ -16,7 +16,7 @@ the influence of the confounder on AIRR, we implanted one of 3 possible 3-mers i
 simulated in this way, the immune state signal was implanted where the immune state corresponded to “diseased”. The same causal graph was used to 
 simulate both source and target distribution of all variables. 
 
-For the ML task, we used k-mer frequency encoding of the AIRRs and logistic regression for prediction. We used the immuneML platform with fixed 
+For the ML task, we used k-mer frequency encoding of the AIRRs and logistic regression for prediction. We used the immuneML platform [3] with fixed 
 training and test set (corresponding to the data from source and target populations) to train the ML model, examine what the model has learned, and 
 compare the learned signals across the source and target populations.
 
@@ -60,7 +60,7 @@ The code for this scenario is available in `AIRR_experiment_3.py` and the releva
 
 For the transcriptomic data, we simulated RNA-seq count datasets with batch and biological effects, where both the batch and biological effects are 
 known to influence the mean and dispersion of gene expression counts. The magnitude of batch effects and true biological effects for the simulations 
-were chosen based on the known levels of batch and biological effects from real-world experimental datasets as described by Zhang and colleagues [3]. When simulating datasets with batch effects, we allowed the biological condition to correlate highly 
+were chosen based on the known levels of batch and biological effects from real-world experimental datasets as described by Zhang and colleagues [4]. When simulating datasets with batch effects, we allowed the biological condition to correlate highly 
 with batches, where 80% of observations of a biological condition are processed in one batch and vice versa. This represents a common scenario in 
 real-world experiments, where often a large majority of the cases are processed in one batch while a large majority of controls are processed in another batch. 
 
@@ -84,5 +84,7 @@ Pavlović, M., Hajj, G. S. A., Pensar, J., Wood, M., Sollid, L. M., Greiff, V., 
 
 [2] Sethna, Z., Elhanati, Y., Callan, C. G., Walczak, A. M., & Mora, T. (2019). OLGA: Fast computation of generation probabilities of B- and T-cell receptor amino acid sequences and motifs. Bioinformatics, 35(17), 2974–2981. https://doi.org/10.1093/bioinformatics/btz035
 
-[3] Zhang, Y., Parmigiani, G., & Johnson, W. E. (2020). ComBat-seq: Batch effect adjustment for RNA-seq count data. NAR Genomics and Bioinformatics, 2(3), lqaa078. https://doi.org/10.1093/nargab/lqaa078
+[3] Pavlović, M., Scheffer, L., Motwani, K., Kanduri, C., Kompova, R., Vazov, N., Waagan, K., Bernal, F. L. M., Costa, A. A., Corrie, B., Akbar, R., Al Hajj, G. S., Balaban, G., Brusko, T. M., Chernigovskaya, M., Christley, S., Cowell, L. G., Frank, R., Grytten, I., … Sandve, G. K. (2021). The immuneML ecosystem for machine learning analysis of adaptive immune receptor repertoires. Nature Machine Intelligence, 3(11), 936–944. https://doi.org/10.1038/s42256-021-00413-z
+
+[4] Zhang, Y., Parmigiani, G., & Johnson, W. E. (2020). ComBat-seq: Batch effect adjustment for RNA-seq count data. NAR Genomics and Bioinformatics, 2(3), lqaa078. https://doi.org/10.1093/nargab/lqaa078
 
