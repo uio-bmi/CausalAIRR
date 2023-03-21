@@ -29,7 +29,7 @@ target population (represented here via training and test set). This larger diff
 
 We repeated the simulation and ML analysis 30 times to obtain performance bounds.
 
-The experiment was set up and run as defined in `AIRR_experiment_1.py`. Relevant code is located under `causal_airr_scripts/experiment1`. The results were deposited in Zenodo database: link.
+The experiment was set up and run as defined in `AIRR_experiment_1.py`. Relevant code is located under `causal_airr_scripts/experiment1`. The results were deposited in Zenodo database: https://zenodo.org/record/7756163.
 
 ## Experiment 2: Selection bias and batch effects make ML models susceptible to learning spurious correlations
 
@@ -44,7 +44,7 @@ In the second scenario, there was no immune state signal implanted in the AIRRs,
 the spurious correlation between the AIRR and the experimental protocol. When applied to unbiased training dataset, the prediction performance 
 was random.
 
-The experiment was set up and run as defined in `AIRR_experiment_2.py`. Relevant code is located under `causal_airr_scripts/experiment2`. The results were deposited in Zenodo database: link.
+The experiment was set up and run as defined in `AIRR_experiment_2.py`. Relevant code is located under `causal_airr_scripts/experiment2`. The results were deposited in Zenodo database: https://zenodo.org/record/7752837.
 
 ## Experiment 3: Batch effects in AIRR settings as compared to classic molecular biomarkers
 
@@ -56,7 +56,7 @@ to predict receptor specificity, i.e., if a receptor will bind to e.g., a virus 
 We assessed the performance of a predictive model (lasso-regularized logistic regression) in predicting the simulated immune signal new test data in three different scenarios: (1) where no batch effects exist in the training data (control), (2) where batch effects 
 exist in the training data and not removed and (3) where batch effects exist in the training data and removed. We used k-mer frequencies and logistic regression to assess ML performance for this scenario. The batch effects, when present, were highly correlated with the immune signal. We repeated the analysis 5 times.
 
-The code for this scenario is available in `AIRR_experiment_3.py` and the relevant code is included in `causal_airr_scripts/experiment3/`. The results were deposited in Zenodo database: link.
+The code for this scenario is available in `AIRR_experiment_3.py` and the relevant code is included in `causal_airr_scripts/experiment3/`. The results were deposited in Zenodo database: https://zenodo.org/record/7752115.
 
 For the transcriptomic data, we simulated RNA-seq count datasets with batch and biological effects, where both the batch and biological effects are 
 known to influence the mean and dispersion of gene expression counts. The magnitude of batch effects and true biological effects for the simulations 
