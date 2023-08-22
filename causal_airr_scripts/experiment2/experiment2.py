@@ -27,6 +27,14 @@ class Exp2Config:
 
 @dataclass
 class Experiment2:
+    """
+    Experiment2 class encapsulates experimental runs illustrating the influence of selection bias on prediction
+    performance of ML models. It relies on Exp2Config to include all parameters
+    needed to simulate the data from the causal graph and on immuneML package to perform ML training and assessment.
+
+    The whole analysis with simulation and ML training and assessment is repeated multiple times
+    (user-specified parameter) to obtain more robust estimates of the performance.
+    """
     name: str
     result_path: Path
     config: Exp2Config
@@ -44,18 +52,20 @@ class Experiment2:
         data_path = setup_path(path / 'data')
         ml_path = setup_path(path / 'ml_result')
 
+        # run the simulation from the causal graph
         simulate_dataset(train_example_count=self.config.train_example_count, test_example_count=self.config.test_example_count,
                          data_path=data_path, sequence_count=self.config.sequence_count, experiment_name=self.name, p_hospital=self.config.p_hospital,
                          p_immune_state=self.config.p_immune_state, immune_signal=make_signal(**self.config.immune_signal),
                          protocol_signal_name=self.config.protocol_signal_name, immune_state_implanting_rate=self.config.immune_state_implanting_rate,
                          protocol_implanting_rate=self.config.protocol_implanting_rate)
 
+        # specify the ML analysis and run it using immuneML
         specs_path = self._write_ml_specs(data_path, ml_path)
-
         app = ImmuneMLApp(specification_path=specs_path, result_path=ml_path / "result/")
         return app.run()
 
     def _write_ml_specs(self, data_path: Path, ml_path: Path) -> Path:
+        # ML specification is hard-coded for experiments since most of the difference comes from the simulations
         specs = define_specs(data_path, experiment_name=self.name)
 
         specification_path = ml_path / "specs.yaml"

@@ -33,8 +33,43 @@ from causal_airr_scripts.util import overlaps, get_overlap_length, save_to_yaml
 
 
 class Experiment3:
+    """
+    Experiment3 class encapsulates experimental runs illustrating the influence of the presence of batch effects on
+    predicting adaptive immune receptor specificity. It uses SimConfig object which contains all simulation parameters.
 
+    The simulation is defined as follows:
+    - some parameters are general and apply to the whole simulation, such as k-mer length, which model to use to
+    generate background sequences (before any motifs/signals are added), how many repetitions of the whole simulation
+    to make, which specific batch correction approaches to try, etc.
+    - some parameters define how to simulate the data in more detail - this is what ImplantingConfig class defines
+
+    The data are simulated in two groups (ImplantingConfig class):
+    1. control receptors which only have the immune signal
+    2. receptors with both batch effects and the immune signal
+
+    This second group of receptors consists of 50% receptors from batch 0 (no batch signal added) and 50% of receptors
+    from batch 1 (with batch signal added) (defined in ImplantingGroup class). The batch effect signals and immune
+    signals may be correlated as defined in ImplantingUnit class.
+
+    Additionally, we allow that these correlations differ between training and test to illustrate what happens with
+    batch effects and ML models when they are transferred to a new setting (or same setting with different
+    distributions).
+
+    After the simulation, in the analysis there are 3 groups of receptor sequences which are used to compare ML
+    performance:
+    1. control receptors (only have the immune signal, no batch effects - ideal case),
+    2. receptors that have batch effects which are corrected for (it could be more of them, but in the analysis we
+    performed there was only one way of correcting: LinearRegression),
+    3. receptors that have batch effects which are not corrected for
+
+    """
     def __init__(self, sim_config: SimConfig, num_processes: int = 4, top_n_coeffs: int = 30):
+        """
+        Arguments:
+            sim_config (SimConfig): parameters of the simulation
+            num_processes (int): how many simulations to run in parallel
+            top_n_coeffs (int): for final ML models (logistic regression), how many top coefficients to show in plot
+        """
         self.sim_config = sim_config
         self.num_processes = num_processes
         self.top_n_coeffs = top_n_coeffs
@@ -103,7 +138,7 @@ class Experiment3:
 
         logging.info(f"Starting run for implanting_group: {impl_setting.to_dict()}, correct={self.get_folder_name_from_correction(correct)}")
 
-        with Pool(self.num_processes) as pool:
+        with Pool(self.num_processes) as pool:  # run self.num_processes repetitions in parallel
             all_metrics = pool.starmap(self.run_one_repetition,
                                        [(PathBuilder.build(setting_path / f'repetition_{repetition + 1}'), impl_setting, correct, repetition)
                                         for repetition in range(self.sim_config.repetitions)])
@@ -116,11 +151,14 @@ class Experiment3:
 
     def run_one_repetition(self, path: Path, impl_setting: ImplantingSetting, correct: bool, repetition_index: int) -> dict:
 
+        # simulate data
         train_dataset = self.simulate_data(PathBuilder.build(path / 'train_dataset'), impl_setting.train, 'train', impl_setting.name)
         test_dataset = self.simulate_data(PathBuilder.build(path / 'test_dataset'), impl_setting.test, 'test', impl_setting.name)
 
+        # encode data for ML and optionally correct for batch effects (if correct is not None)
         train_dataset, test_dataset = self.encode_with_kmers(train_dataset, test_dataset, path / 'encoding', correct)
 
+        # train and asses an ML model (here always logistic regression)
         log_reg_info_path = PathBuilder.build(path / 'assessment')
         log_reg = self.train_log_reg(train_dataset, log_reg_info_path)
         metrics = self.assess_log_reg(log_reg, test_dataset, log_reg_info_path)

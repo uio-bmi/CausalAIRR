@@ -88,7 +88,7 @@ def simulate_dataset(train_example_count: int, test_example_count, data_path: Pa
     train_dataset = make_dataset(repertoire_paths=study_cohort_data["repertoire"], path=data_path / 'train',
                                  dataset_name=f"experiment{experiment_name}_train", signal_names=[immune_signal.id, 'confounder'])
 
-    # # # make a test dataset
+    # make a test dataset
 
     test_graph = make_graph(confounder_p_test, immune_state_p_conf1, immune_state_p_conf2, data_path, sequence_count, immune_signal,
                             confounder_signal, immune_state_implanting_rate, confounder_implanting_rate, experiment_name, train=False)

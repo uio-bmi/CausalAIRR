@@ -14,17 +14,17 @@ from causal_airr_scripts.implanting import make_signal
 
 @dataclass
 class ImplantingUnit:
-    label_implanting_prob: float
-    label_given_no_motif_prob: float
-    label_given_motif_prob: float
-    batch_implanting_prob: float = 0.
+    label_implanting_prob: float  # P(label) = P(receptor sequence being specific to the antigen in question)
+    label_given_no_motif_prob: float  # P(label | immune motif not present)
+    label_given_motif_prob: float  # P(label | immune motif present)
+    batch_implanting_prob: float = 0.  # P(batch) = P(receptor sequence containing any motifs of the batch signal)
 
 
 @dataclass
 class ImplantingGroup:
-    baseline: ImplantingUnit
-    modified: ImplantingUnit
-    seq_count: int
+    baseline: ImplantingUnit  # batch 0 -> e.g., coming from experimental protocol 0 without batch signals
+    modified: ImplantingUnit  # batch 1 -> e.g., coming from experimental protocol 1 with batch signals
+    seq_count: int  # how many AIR sequences to simulate for each of the batches
 
     def to_dict(self) -> dict:
         self_dict = copy.deepcopy(vars(self))
@@ -35,9 +35,9 @@ class ImplantingGroup:
 
 @dataclass
 class ImplantingSetting:
-    train: ImplantingGroup
-    test: ImplantingGroup
-    name: str
+    train: ImplantingGroup  # simulation params for training data
+    test: ImplantingGroup  # simulation params for test data
+    name: str  # user-defined name for the setting, used as a part of the output path
 
     def to_dict(self) -> dict:
         return {'name': self.name, 'train': self.train.to_dict() if self.train is not None else {},
@@ -51,8 +51,8 @@ class ImplantingSetting:
 
 @dataclass
 class ImplantingConfig:
-    control: ImplantingSetting
-    batch: ImplantingSetting
+    control: ImplantingSetting  # how to simulate data with immune signal only (no batch effects)
+    batch: ImplantingSetting  # how to simulate data which has immune signal and batch effects
 
     def to_dict(self) -> dict:
         return {'control': self.control.to_dict(), 'batch': self.batch.to_dict()}
@@ -65,14 +65,14 @@ class ImplantingConfig:
 
 @dataclass
 class SimConfig:
-    k: int
-    repetitions: int
-    olga_model_name: str
-    signal: dict
-    batch_signal: dict
+    k: int  # k-mer size (e.g., 3)
+    repetitions: int  # how many times to replicate the simulation
+    olga_model_name: str  # which model to use from OLGA (AIR simulation tool, here: always humanTRB)
+    signal: dict  # which motifs will be a part of the immune signal defining receptor specificity
+    batch_signal: dict  # which motifs will be in the batch signal
     implanting_config: ImplantingConfig
-    batch_corrections: list
-    sequence_encoding: str = "continuous_kmer"
+    batch_corrections: list  # which models to use for batch corrections
+    sequence_encoding: str = "continuous_kmer"  # how to represent a sequence (here: AIRRSEQ -> AIR, IRR, RRS, RSE, SEQ)
 
     def to_dict(self) -> dict:
         config = copy.deepcopy(vars(self))

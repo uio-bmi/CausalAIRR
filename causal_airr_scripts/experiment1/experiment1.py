@@ -15,21 +15,29 @@ from causal_airr_scripts.util import save_to_yaml
 
 @dataclass
 class Exp1Config:
-    immune_state_p_conf1: float
-    immune_state_p_conf2: float
-    confounder_p_train: float
-    confounder_p_test: float
-    immune_state_implanting_rate: float
-    confounder_implanting_rate: float
-    immune_signal: dict
-    confounder_signal: dict
-    sequence_count: int
-    train_example_count: int
-    test_example_count: int
+    immune_state_p_conf1: float  # probability of a person getting a label 'diseased' for confounder value 1
+    immune_state_p_conf2: float  # probability of a person getting a label 'diseased' for confounder value 2
+    confounder_p_train: float  # probability that the confounder will have value 1 in the training simulation data
+    confounder_p_test: float  # probability that the confounder will have value 1 in the test simulation data
+    immune_state_implanting_rate: float  # percentage of receptors in AIRR that contain the immune signal of disease
+    confounder_implanting_rate: float  # percentage of receptors in AIRR that contain confounder signal
+    immune_signal: dict  # which motifs the immune signal contains used to construct immuneML Signal object
+    confounder_signal: dict  # which motifs the confounder signal contains used to construct immuneML Signal object
+    sequence_count: int  # how many receptor sequences to create in one AIRR
+    train_example_count: int  # how many AIRRs to make in the training dataset
+    test_example_count: int  # how many AIRRs to make in the test dataset
 
 
 @dataclass
 class Experiment1:
+    """
+    Experiment1 class encapsulates experimental runs illustrating the influence of changing confounder
+    distribution on prediction performance of ML models. It relies on Exp1Config to include all parameters
+    needed to simulate the data from the causal graph and on immuneML package to perform ML training and assessment.
+
+    The whole analysis with simulation and ML training and assessment is repeated multiple times
+    (user-specified parameter) to obtain more robust estimates of the performance.
+    """
     name: str
     result_path: Path
     config: Exp1Config

@@ -2,6 +2,16 @@ from pathlib import Path
 
 
 def define_specs(data_path: Path, experiment_name: str) -> dict:
+    """
+    Constructs immuneML specs to import the data from AIRR format, represent it used k-mer frequencies and train a
+    logistic regression model;
+
+    Logistic regression model will also include hyperparameters optimized via 5-fold cross-validation (here only
+    regularization constant is optimized) and regularization type is fixed to L1 due to sparsity in the used encoding;
+
+    immuneML will use pre-specified parts for training and test based on the metadata, report ML model coefficients and
+    feature comparison plots;
+    """
     return {
         "definitions": {
             "datasets": {
